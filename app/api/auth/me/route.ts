@@ -2,10 +2,14 @@ import { NextResponse } from 'next/server'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
 
+// Cache the response for 5 minutes
+const CACHE_TIME = 5 * 60 // 5 minutes in seconds
+
 /**
  * GET /api/auth/me
  * Returns the current authenticated employee's information
  * Auto-links the account if not already linked
+ * Cached for 5 minutes to reduce database load
  */
 export async function GET() {
   try {
@@ -36,7 +40,7 @@ export async function GET() {
       }
     })
 
-    // If linked, return immediately (fast path)
+    // If linked, return immediately (fast path) with cache headers
     if (employee) {
       // Only update lastLogin if it's been more than 1 hour (reduce writes)
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
@@ -60,6 +64,12 @@ export async function GET() {
           isActive: employee.isActive,
           fullName: employee.fullName,
           passportPhoto: employee.passportPhoto,
+        }
+      }, {
+        headers: {
+          'Cache-Control': `private, max-age=${CACHE_TIME}, stale-while-revalidate=${CACHE_TIME * 2}`,
+          'CDN-Cache-Control': `private, max-age=${CACHE_TIME}`,
+          'Vercel-CDN-Cache-Control': `private, max-age=${CACHE_TIME}`,
         }
       })
     }
@@ -150,6 +160,12 @@ export async function GET() {
           isActive: employee.isActive,
           fullName: employee.fullName,
           passportPhoto: employee.passportPhoto,
+        }
+      }, {
+        headers: {
+          'Cache-Control': `private, max-age=${CACHE_TIME}, stale-while-revalidate=${CACHE_TIME * 2}`,
+          'CDN-Cache-Control': `private, max-age=${CACHE_TIME}`,
+          'Vercel-CDN-Cache-Control': `private, max-age=${CACHE_TIME}`,
         }
       })
     }

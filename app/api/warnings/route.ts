@@ -84,11 +84,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Create date in IST timezone
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC+5:30
+    const istDate = new Date(now.getTime() + istOffset);
+
     const warning = await prisma.warning.create({
       data: {
         employeeId: parseInt(employeeId),
         warningType,
-        warningDate: new Date(),
+        warningDate: istDate,
         warningMessage,
         severity,
         issuedBy: issuedBy ? parseInt(issuedBy) : null,

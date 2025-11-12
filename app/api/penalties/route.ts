@@ -87,6 +87,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Create date in IST timezone
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC+5:30
+    const istDate = new Date(now.getTime() + istOffset);
+
     const penalty = await prisma.penalty.create({
       data: {
         employeeId: parseInt(employeeId),
@@ -94,7 +99,7 @@ export async function POST(request: NextRequest) {
         penaltyType,
         amount: amount ? parseFloat(amount) : null,
         description,
-        penaltyDate: penaltyDate ? new Date(penaltyDate) : new Date(),
+        penaltyDate: penaltyDate ? new Date(penaltyDate) : istDate,
         issuedBy: issuedBy ? parseInt(issuedBy) : null,
         notes,
       },

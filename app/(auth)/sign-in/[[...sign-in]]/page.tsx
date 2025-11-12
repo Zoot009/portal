@@ -18,6 +18,18 @@ export default function SignInPage() {
         <div className="relative w-full">
           <div className="absolute -inset-2 bg-gradient-to-br from-blue-200/40 via-white/60 to-indigo-200/40 rounded-3xl blur-lg opacity-80"></div>
           <div className="relative bg-white/80 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl p-10 flex flex-col items-center">
+            {/* Logo/Image */}
+            <div className="mb-6">
+              <Image
+                src="/logo.jpg"
+                alt="Logo"
+                width={120}
+                height={120}
+                className="object-contain"
+                priority
+              />
+            </div>
+            
             <SignIn
               appearance={{
                 elements: {

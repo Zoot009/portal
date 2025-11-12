@@ -32,6 +32,7 @@ import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
 import { ZootLogo } from "@/components/zoot-logo"
+import { useAuth } from "@/lib/auth-context"
 import {
   Sidebar,
   SidebarContent,
@@ -223,20 +224,9 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  // Fetch current user role
-  const { data: userData } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: async () => {
-      const response = await fetch('/api/auth/me')
-      if (!response.ok) return null
-      return response.json()
-    },
-    // Show full menu immediately while loading
-    placeholderData: { employee: { role: 'ADMIN' } },
-    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
-  })
-
-  const userRole = userData?.employee?.role || 'ADMIN'
+  // Use shared auth context instead of separate query
+  const { employee } = useAuth()
+  const userRole = employee?.role || 'ADMIN'
 
   // Filter navigation items based on role
   const getFilteredNavMain = React.useMemo(() => {

@@ -35,6 +35,8 @@ interface Warning {
   isActive: boolean;
   issuedBy: number | null;
   relatedDate: string | null;
+  viewedByEmployee: boolean;
+  viewedAt: string | null;
   employee: {
     id: number;
     name: string;
@@ -55,6 +57,8 @@ interface Penalty {
   isPaid: boolean;
   notes: string | null;
   issuedBy: number | null;
+  viewedByEmployee: boolean;
+  viewedAt: string | null;
   employee: {
     id: number;
     name: string;
@@ -81,23 +85,27 @@ function AdminPage() {
   }, [searchParams]);
 
   // Fetch warnings
-  const { data: warningsResponse, isLoading: warningsLoading } = useQuery({
+  const { data: warningsResponse, isLoading: warningsLoading, refetch: refetchWarnings } = useQuery({
     queryKey: ['warnings'],
     queryFn: async () => {
       const response = await fetch('/api/warnings');
       if (!response.ok) throw new Error('Failed to fetch warnings');
       return response.json();
-    }
+    },
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   });
 
   // Fetch penalties
-  const { data: penaltiesResponse, isLoading: penaltiesLoading } = useQuery({
+  const { data: penaltiesResponse, isLoading: penaltiesLoading, refetch: refetchPenalties } = useQuery({
     queryKey: ['penalties'],
     queryFn: async () => {
       const response = await fetch('/api/penalties');
       if (!response.ok) throw new Error('Failed to fetch penalties');
       return response.json();
-    }
+    },
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   });
 
   const warnings = warningsResponse?.data || [];
@@ -299,48 +307,52 @@ function AdminPage() {
                 </div>
               ) : (
                 filteredWarnings.map((warning: Warning) => (
-                  <Card key={warning.id} className="p-6">
-                    <div className="flex flex-col lg:flex-row lg:items-start justify-between space-y-4 lg:space-y-0">
-                      <div className="flex items-start space-x-4 flex-1">
-                        <div className="flex-shrink-0">
-                          <div className="w-10 h-10 bg-gradient-to-r from-yellow-500 to-orange-600 rounded-full flex items-center justify-center">
-                            <AlertTriangle className="h-5 w-5 text-white" />
+                  <Card key={warning.id} className="hover:shadow-sm transition-shadow">
+                    <div className="flex items-start justify-between p-4">
+                      <div className="flex items-start gap-3 flex-1">
+                        <div className="flex-shrink-0 mt-1">
+                          <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                            <AlertTriangle className="h-4 w-4 text-gray-600" />
                           </div>
                         </div>
                         
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-2 flex-wrap">
-                            <h3 className="text-lg font-semibold">{warning.warningType.replace(/_/g, ' ')}</h3>
-                            <Badge className={
-                              warning.severity === 'CRITICAL' ? 'bg-purple-100 text-purple-800' :
-                              warning.severity === 'HIGH' ? 'bg-red-100 text-red-800' : 
-                              warning.severity === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' : 
-                              'bg-gray-100 text-gray-800'
-                            }>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="text-sm font-medium text-gray-900">
+                              {warning.warningType.replace(/_/g, ' ')}
+                            </h3>
+                            <Badge variant="outline" className="text-xs">
                               {warning.severity}
                             </Badge>
-                            <Badge className={warning.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                              {warning.isActive ? 'ACTIVE' : 'RESOLVED'}
-                            </Badge>
+                            {warning.viewedByEmployee && (
+                              <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                                ✓ Read
+                              </Badge>
+                            )}
                           </div>
                           
-                          <p className="text-sm text-muted-foreground mb-2">
-                            Employee: <strong>{warning.employee.name}</strong> ({warning.employee.employeeCode})
+                          <p className="text-sm text-gray-600 mb-2">
+                            <span className="font-medium">{warning.employee.name}</span>
+                            <span className="text-gray-400 mx-1">•</span>
+                            <span className="text-gray-500">{warning.employee.employeeCode}</span>
                           </p>
                           
-                          <p className="text-sm mb-3">{warning.warningMessage}</p>
+                          <p className="text-sm text-gray-700 mb-2">{warning.warningMessage}</p>
                           
-                          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                            <span>Issued: {new Date(warning.warningDate).toLocaleDateString()}</span>
-                            {warning.employee.department && <span>{warning.employee.department}</span>}
-                          </div>
+                          <p className="text-xs text-gray-500">
+                            {new Date(warning.warningDate).toLocaleDateString()}
+                            {warning.viewedByEmployee && warning.viewedAt && (
+                              <span className="ml-2 text-green-600">
+                                • Read on {new Date(warning.viewedAt).toLocaleDateString()}
+                              </span>
+                            )}
+                          </p>
                         </div>
                       </div>
                       
-                      {/* Actions Menu */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2">
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -396,48 +408,60 @@ function AdminPage() {
                 filteredPenalties.map((penalty: Penalty) => {
                   
                   return (
-                    <Card key={penalty.id} className="p-6">
-                      <div className="flex flex-col lg:flex-row lg:items-start justify-between space-y-4 lg:space-y-0">
-                        <div className="flex items-start space-x-4 flex-1">
-                          <div className="flex-shrink-0">
-                            <div className="w-10 h-10 bg-gradient-to-r from-red-500 to-red-600 rounded-full flex items-center justify-center">
-                              <ShieldAlert className="h-5 w-5 text-white" />
+                    <Card key={penalty.id} className="hover:shadow-sm transition-shadow">
+                      <div className="flex items-start justify-between p-4">
+                        <div className="flex items-start gap-3 flex-1">
+                          <div className="flex-shrink-0 mt-1">
+                            <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                              <ShieldAlert className="h-4 w-4 text-gray-600" />
                             </div>
                           </div>
                           
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-2 flex-wrap">
-                              <h3 className="text-lg font-semibold">{penalty.penaltyType.replace(/_/g, ' ')}</h3>
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="text-sm font-medium text-gray-900">
+                                {penalty.penaltyType.replace(/_/g, ' ')}
+                              </h3>
+                              {penalty.amount && (
+                                <Badge variant="outline" className="text-xs">
+                                  ₹{penalty.amount.toFixed(2)}
+                                </Badge>
+                              )}
+                              {penalty.viewedByEmployee && (
+                                <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                                  ✓ Read
+                                </Badge>
+                              )}
                             </div>
                             
-                            <p className="text-sm text-muted-foreground mb-2">
-                              Employee: <strong>{penalty.employee.name}</strong> ({penalty.employee.employeeCode})
+                            <p className="text-sm text-gray-600 mb-2">
+                              <span className="font-medium">{penalty.employee.name}</span>
+                              <span className="text-gray-400 mx-1">•</span>
+                              <span className="text-gray-500">{penalty.employee.employeeCode}</span>
                             </p>
                             
-                            <p className="text-sm mb-3">{penalty.description}</p>
+                            <p className="text-sm text-gray-700 mb-2">{penalty.description}</p>
                             
-                            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                              <span>Date: {new Date(penalty.penaltyDate).toLocaleDateString()}</span>
-                              {penalty.amount && (
-                                <span className="text-red-600 font-medium">
-                                  ₹{penalty.amount.toFixed(2)}
+                            <p className="text-xs text-gray-500">
+                              {new Date(penalty.penaltyDate).toLocaleDateString()}
+                              {penalty.viewedByEmployee && penalty.viewedAt && (
+                                <span className="ml-2 text-green-600">
+                                  • Read on {new Date(penalty.viewedAt).toLocaleDateString()}
                                 </span>
                               )}
-                              {penalty.employee.department && <span>{penalty.employee.department}</span>}
-                            </div>
+                            </p>
                             
                             {penalty.notes && (
-                              <div className="mt-2 p-2 bg-muted rounded text-sm">
+                              <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-600">
                                 <strong>Notes:</strong> {penalty.notes}
                               </div>
                             )}
                           </div>
                         </div>
                         
-                        {/* Actions Menu */}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2">
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>

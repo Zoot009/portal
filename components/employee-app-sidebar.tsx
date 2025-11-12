@@ -24,6 +24,7 @@ import {
 import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
+import { useAuth } from "@/lib/auth-context"
 import {
   Sidebar,
   SidebarContent,
@@ -89,7 +90,7 @@ const data = {
       icon: AlertCircle,
     },
     {
-      title: "My Penalties",
+      title: "My Warnings & Penalties",
       url: "/employee-panel/my-penalties",
       icon: ShieldAlert,
     },
@@ -102,18 +103,11 @@ const data = {
 }
 
 export function EmployeeAppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  // Check if user is admin
-  const { data: authData } = useQuery({
-    queryKey: ['auth'],
-    queryFn: async () => {
-      const response = await fetch('/api/auth/me')
-      if (!response.ok) return null
-      return response.json()
-    }
-  })
+  // Use shared auth context
+  const { employee } = useAuth()
 
-  const isAdmin = authData?.employee?.role === 'ADMIN'
-  const isTeamLeader = authData?.employee?.role === 'TEAMLEADER'
+  const isAdmin = employee?.role === 'ADMIN'
+  const isTeamLeader = employee?.role === 'TEAMLEADER'
   const canAccessAdminPanel = isAdmin || isTeamLeader
 
   return (
