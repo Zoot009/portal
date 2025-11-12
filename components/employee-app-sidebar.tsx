@@ -77,7 +77,7 @@ const data = {
       ],
     },
     {
-      title: "Gamification",
+      title: "My Rewards",
       url: "/employee-panel/gamification",
       icon: Trophy,
       items: [

@@ -533,14 +533,20 @@ export default function EmployeesPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem 
-                          onClick={() => handleEditEmployee(employee)}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            handleEditEmployee(employee)
+                          }}
                           className="flex items-center cursor-pointer"
                         >
                           <Edit className="mr-2 h-4 w-4" />
                           Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem 
-                          onClick={() => handleDeleteEmployee(employee.id, employee.name)}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            handleDeleteEmployee(employee.id, employee.name)
+                          }}
                           className="flex items-center cursor-pointer text-red-600 focus:text-red-600"
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
