@@ -480,90 +480,109 @@ export default function MyAttendanceAnalyticsPage() {
             </Card>
           </div>
 
-          {/* Weekly Hours Overview & Goal Progress */}
+          {/* Attendance Quality & Goal Progress */}
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-blue-600" />
-                  Weekly Hours Overview
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  Attendance Quality
                 </CardTitle>
-                <CardDescription>Hours worked breakdown for recent weeks</CardDescription>
+                <CardDescription>Performance metrics and consistency</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {weeklyData.length > 0 ? (
-                  <>
-                    <div className="space-y-3">
-                      {weeklyData.slice(-4).map((week, index) => {
-                        const weekGoal = week.days * minutesToHours(dailyGoalMinutes)
-                        const progress = (week.hours / weekGoal) * 100
-                        const isCurrentWeek = index === weeklyData.slice(-4).length - 1
-                        
-                        return (
-                          <div key={week.week} className="space-y-1">
-                            <div className="flex items-center justify-between text-sm">
-                              <span className={`${isCurrentWeek ? 'font-semibold text-blue-600' : 'text-muted-foreground'}`}>
-                                {week.week} {isCurrentWeek && '(Current)'}
-                              </span>
-                              <div className="flex items-center gap-2">
-                                <span className="font-semibold">
-                                  {formatHoursToTime(week.hours)}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  / {formatHoursToTime(weekGoal)}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Progress 
-                                value={Math.min(progress, 100)} 
-                                className={`h-2 flex-1 ${
-                                  progress >= 100 ? 'bg-green-100 [&>div]:bg-green-600' : 
-                                  progress >= 80 ? 'bg-blue-100 [&>div]:bg-blue-600' :
-                                  progress >= 50 ? 'bg-yellow-100 [&>div]:bg-yellow-600' :
-                                  'bg-red-100 [&>div]:bg-red-600'
-                                }`}
-                              />
-                              <span className={`text-xs font-medium w-12 text-right ${
-                                progress >= 100 ? 'text-green-600' : 
-                                progress >= 80 ? 'text-blue-600' :
-                                progress >= 50 ? 'text-yellow-600' :
-                                'text-red-600'
-                              }`}>
-                                {progress.toFixed(0)}%
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between text-xs text-muted-foreground">
-                              <span>{week.days} days</span>
-                              <span>{formatHoursToTime(week.avgDaily)}/day avg</span>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-
-                    <div className="pt-3 border-t">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="text-center">
-                          <div className="text-xs text-muted-foreground mb-1">Best Week</div>
-                          <div className="text-lg font-bold text-green-600">
-                            {formatHoursToTime(Math.max(...weeklyData.map(w => w.hours)))}
-                          </div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-xs text-muted-foreground mb-1">Avg Weekly</div>
-                          <div className="text-lg font-bold text-blue-600">
-                            {formatHoursToTime(weeklyData.reduce((sum, w) => sum + w.hours, 0) / weeklyData.length)}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-center text-muted-foreground py-8">
-                    No weekly data available
+                {/* Attendance Rate */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Attendance Rate</span>
+                    <span className="text-lg font-bold text-green-600">{attendanceRate.toFixed(1)}%</span>
                   </div>
-                )}
+                  <Progress 
+                    value={attendanceRate} 
+                    className={`h-2 ${
+                      attendanceRate >= 95 ? 'bg-green-100 [&>div]:bg-green-600' : 
+                      attendanceRate >= 85 ? 'bg-blue-100 [&>div]:bg-blue-600' :
+                      attendanceRate >= 75 ? 'bg-yellow-100 [&>div]:bg-yellow-600' :
+                      'bg-red-100 [&>div]:bg-red-600'
+                    }`}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {stats.present} present / {stats.totalRecords} total days
+                  </p>
+                </div>
+
+                {/* Consistency Score */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Daily Goal Achievement</span>
+                    <span className="text-lg font-bold text-purple-600">
+                      {stats.daysWithHours > 0 ? ((stats.daysMetGoal / stats.daysWithHours) * 100).toFixed(0) : 0}%
+                    </span>
+                  </div>
+                  <Progress 
+                    value={stats.daysWithHours > 0 ? (stats.daysMetGoal / stats.daysWithHours) * 100 : 0} 
+                    className="h-2 bg-purple-100 [&>div]:bg-purple-600"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {stats.daysMetGoal} out of {stats.daysWithHours} days met daily goal
+                  </p>
+                </div>
+
+                {/* Key Metrics Grid */}
+                <div className="grid grid-cols-2 gap-3 pt-3 border-t">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1">
+                      <CheckCircle className="h-3 w-3 text-green-600" />
+                      <span className="text-xs text-muted-foreground">Present</span>
+                    </div>
+                    <div className="text-xl font-bold text-green-600">{stats.present}</div>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3 text-red-600" />
+                      <span className="text-xs text-muted-foreground">Absent</span>
+                    </div>
+                    <div className="text-xl font-bold text-red-600">{stats.absent}</div>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3 text-yellow-600" />
+                      <span className="text-xs text-muted-foreground">Leave</span>
+                    </div>
+                    <div className="text-xl font-bold text-yellow-600">{stats.leave}</div>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-3 w-3 text-orange-600" />
+                      <span className="text-xs text-muted-foreground">Late</span>
+                    </div>
+                    <div className="text-xl font-bold text-orange-600">{stats.late}</div>
+                  </div>
+                </div>
+
+                {/* Status Badge */}
+                <div className="pt-2">
+                  {attendanceRate >= 95 ? (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-2 text-center">
+                      <span className="text-xs font-medium text-green-700">✨ Excellent Attendance!</span>
+                    </div>
+                  ) : attendanceRate >= 85 ? (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 text-center">
+                      <span className="text-xs font-medium text-blue-700">👍 Good Attendance</span>
+                    </div>
+                  ) : attendanceRate >= 75 ? (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 text-center">
+                      <span className="text-xs font-medium text-yellow-700">⚠️ Needs Improvement</span>
+                    </div>
+                  ) : (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-2 text-center">
+                      <span className="text-xs font-medium text-red-700">❗ Critical - Action Needed</span>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
