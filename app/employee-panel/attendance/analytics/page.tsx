@@ -16,8 +16,7 @@ import {
   CheckCircle,
   BarChart3,
   PieChart as PieChartIcon,
-  Activity,
-  Flame
+  Activity
 } from "lucide-react"
 import React, { useState, useEffect } from "react"
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSunday } from 'date-fns'
@@ -329,76 +328,6 @@ export default function MyAttendanceAnalyticsPage() {
   const overtimeHours = minutesToHours(stats.overtimeMinutes)
   const attendanceRate = stats.totalRecords > 0 ? (stats.present / stats.totalRecords) * 100 : 0
 
-  // Calculate attendance streak
-  const calculateStreak = () => {
-    const sortedRecords = [...filteredRecords]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    
-    let currentStreak = 0
-    let longestStreak = 0
-    let tempStreak = 0
-    let lastDate: Date | null = null
-    
-    // Sort records by date ascending for streak calculation
-    const ascendingRecords = [...filteredRecords]
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    
-    ascendingRecords.forEach(record => {
-      const isPresent = record.status === 'PRESENT' || record.status === 'WFH_APPROVED'
-      const recordDate = new Date(record.date)
-      
-      if (isPresent) {
-        if (lastDate) {
-          const dayDiff = Math.floor((recordDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24))
-          // Allow for weekends (2-3 days gap) but not more
-          if (dayDiff <= 3) {
-            tempStreak++
-          } else {
-            tempStreak = 1
-          }
-        } else {
-          tempStreak = 1
-        }
-        
-        if (tempStreak > longestStreak) {
-          longestStreak = tempStreak
-        }
-        
-        lastDate = recordDate
-      } else {
-        tempStreak = 0
-        lastDate = null
-      }
-    })
-    
-    // Calculate current streak from most recent records
-    for (let i = 0; i < sortedRecords.length; i++) {
-      const record = sortedRecords[i]
-      const isPresent = record.status === 'PRESENT' || record.status === 'WFH_APPROVED'
-      
-      if (isPresent) {
-        currentStreak++
-        
-        // Check if next record breaks the streak
-        if (i < sortedRecords.length - 1) {
-          const nextRecord = sortedRecords[i + 1]
-          const currentDate = new Date(record.date)
-          const nextDate = new Date(nextRecord.date)
-          const dayDiff = Math.floor((currentDate.getTime() - nextDate.getTime()) / (1000 * 60 * 60 * 24))
-          
-          // If gap is more than 3 days, break the streak
-          if (dayDiff > 3) break
-        }
-      } else {
-        break
-      }
-    }
-    
-    return { currentStreak, longestStreak }
-  }
-
-  const { currentStreak, longestStreak } = calculateStreak()
-
   // Estimate days needed to reach goal
   const avgDailyMinutes = stats.daysWithHours > 0 ? stats.totalMinutes / stats.daysWithHours : 0
   const daysNeeded = avgDailyMinutes > 0 ? Math.ceil(hoursToMinutes(hoursRemaining) / avgDailyMinutes) : 0
@@ -551,57 +480,88 @@ export default function MyAttendanceAnalyticsPage() {
             </Card>
           </div>
 
-          {/* Attendance Streak & Goal Progress */}
+          {/* Weekly Hours Overview & Goal Progress */}
           <div className="grid gap-4 md:grid-cols-2">
-            <Card className="bg-gradient-to-br from-orange-50 to-red-50 border-orange-200">
+            <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Flame className="h-5 w-5 text-orange-600" />
-                  Attendance Streak
+                  <BarChart3 className="h-5 w-5 text-blue-600" />
+                  Weekly Hours Overview
                 </CardTitle>
-                <CardDescription>Track your consecutive attendance days</CardDescription>
+                <CardDescription>Hours worked breakdown for recent weeks</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <Flame className="h-8 w-8 text-orange-600" />
-                    <span className="text-5xl font-bold text-orange-600">{currentStreak}</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {currentStreak === 1 ? 'Day' : 'Days'} Current Streak
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-                  <div className="text-center">
-                    <div className="text-xs text-muted-foreground mb-1">Longest Streak</div>
-                    <div className="flex items-center justify-center gap-1">
-                      <Award className="h-4 w-4 text-yellow-600" />
-                      <span className="text-2xl font-bold text-yellow-600">{longestStreak}</span>
+                {weeklyData.length > 0 ? (
+                  <>
+                    <div className="space-y-3">
+                      {weeklyData.slice(-4).map((week, index) => {
+                        const weekGoal = week.days * minutesToHours(dailyGoalMinutes)
+                        const progress = (week.hours / weekGoal) * 100
+                        const isCurrentWeek = index === weeklyData.slice(-4).length - 1
+                        
+                        return (
+                          <div key={week.week} className="space-y-1">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className={`${isCurrentWeek ? 'font-semibold text-blue-600' : 'text-muted-foreground'}`}>
+                                {week.week} {isCurrentWeek && '(Current)'}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold">
+                                  {formatHoursToTime(week.hours)}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  / {formatHoursToTime(weekGoal)}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Progress 
+                                value={Math.min(progress, 100)} 
+                                className={`h-2 flex-1 ${
+                                  progress >= 100 ? 'bg-green-100 [&>div]:bg-green-600' : 
+                                  progress >= 80 ? 'bg-blue-100 [&>div]:bg-blue-600' :
+                                  progress >= 50 ? 'bg-yellow-100 [&>div]:bg-yellow-600' :
+                                  'bg-red-100 [&>div]:bg-red-600'
+                                }`}
+                              />
+                              <span className={`text-xs font-medium w-12 text-right ${
+                                progress >= 100 ? 'text-green-600' : 
+                                progress >= 80 ? 'text-blue-600' :
+                                progress >= 50 ? 'text-yellow-600' :
+                                'text-red-600'
+                              }`}>
+                                {progress.toFixed(0)}%
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              <span>{week.days} days</span>
+                              <span>{formatHoursToTime(week.avgDaily)}/day avg</span>
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {longestStreak === 1 ? 'day' : 'days'}
-                    </p>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-xs text-muted-foreground mb-1">Present Days</div>
-                    <div className="flex items-center justify-center gap-1">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span className="text-2xl font-bold text-green-600">{stats.present}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      this period
-                    </p>
-                  </div>
-                </div>
 
-                {currentStreak > 0 && (
-                  <div className="bg-orange-100 border border-orange-300 rounded-lg p-3 mt-4">
-                    <p className="text-xs text-orange-800 text-center font-medium">
-                      {currentStreak >= 5 ? '🔥 Amazing! Keep it up!' : 
-                       currentStreak >= 3 ? '👏 Great streak going!' : 
-                       '💪 Start of a great streak!'}
-                    </p>
+                    <div className="pt-3 border-t">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="text-center">
+                          <div className="text-xs text-muted-foreground mb-1">Best Week</div>
+                          <div className="text-lg font-bold text-green-600">
+                            {formatHoursToTime(Math.max(...weeklyData.map(w => w.hours)))}
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-xs text-muted-foreground mb-1">Avg Weekly</div>
+                          <div className="text-lg font-bold text-blue-600">
+                            {formatHoursToTime(weeklyData.reduce((sum, w) => sum + w.hours, 0) / weeklyData.length)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center text-muted-foreground py-8">
+                    No weekly data available
                   </div>
                 )}
               </CardContent>
