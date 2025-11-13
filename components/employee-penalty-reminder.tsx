@@ -104,7 +104,17 @@ export function EmployeePenaltyReminder() {
     }
   }
 
-  const handleViewNow = async () => {
+  const handleViewNow = () => {
+    // Ensure we're on the client side
+    if (typeof window === 'undefined') return
+    
+    setShowDialog(false)
+    
+    // Navigate to penalties page (don't mark as read, they need to click "Mark as Read" button there)
+    router.push('/employee-panel/my-penalties')
+  }
+
+  const handleMarkAsRead = async () => {
     // Ensure we're on the client side
     if (typeof window === 'undefined' || !employeeId) return
     
@@ -115,17 +125,19 @@ export function EmployeePenaltyReminder() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ employeeId, type: 'both' }),
       })
+      
+      toast.success('Marked as read', {
+        description: 'All warnings and penalties have been marked as read.',
+      })
     } catch (error) {
       console.error('Error marking items as viewed:', error)
+      toast.error('Failed to mark as read')
     }
     
     // Mark as dismissed for this session (won't show again)
     sessionStorage.setItem('employee-penalty-reminder-dismissed', 'true')
     sessionStorage.removeItem('employee-penalty-reminder-snooze-until')
     setShowDialog(false)
-    
-    // Navigate to penalties page
-    router.push('/employee-panel/my-penalties')
   }
 
   const handleLater = () => {
@@ -210,15 +222,21 @@ export function EmployeePenaltyReminder() {
             {getMessage()}
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={handleLater}>
-            I'll check later
+        <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+          <AlertDialogCancel onClick={handleLater} className="sm:flex-1">
+            I'll do it later
           </AlertDialogCancel>
           <AlertDialogAction 
             onClick={handleViewNow}
-            className={`bg-gradient-to-r ${getColor()} ${getHoverColor()}`}
+            className="bg-blue-600 hover:bg-blue-700 sm:flex-1"
           >
-            View now
+            Take me there
+          </AlertDialogAction>
+          <AlertDialogAction 
+            onClick={handleMarkAsRead}
+            className={`bg-gradient-to-r ${getColor()} ${getHoverColor()} sm:flex-1`}
+          >
+            Mark as read
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
