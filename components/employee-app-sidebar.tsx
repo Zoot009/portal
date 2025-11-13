@@ -85,14 +85,14 @@ const data = {
   ],
   navSecondary: [
     {
-      title: "My Issues",
-      url: "/employee-panel/my-issues",
-      icon: AlertCircle,
-    },
-    {
       title: "My Warnings & Penalties",
       url: "/employee-panel/my-penalties",
       icon: ShieldAlert,
+    },
+    {
+      title: "My Issues",
+      url: "/employee-panel/my-issues",
+      icon: AlertCircle,
     },
     {
       title: "My Profile",
