@@ -175,61 +175,8 @@ export default function BreakPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       <div className="space-y-6 p-6">
-        {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-4 mb-6">
-          <Card className="border-2">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Today's Date</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {new Date().toLocaleDateString('en-US', { weekday: 'long' })}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-2">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Breaks Taken</CardTitle>
-              <Coffee className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{completedBreaks}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {activeBreak ? 'One in progress' : 'Completed today'}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-2">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Time</CardTitle>
-              <Clock className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{formatDuration(totalBreakTime)}</div>
-              <p className="text-xs text-muted-foreground mt-1">{totalBreakTime} minutes</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-2">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Average Break</CardTitle>
-              <TrendingUp className="h-4 w-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{formatDuration(avgBreakTime)}</div>
-              <p className="text-xs text-muted-foreground mt-1">Per session</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Main Break Timer Card */}
-        <Card className="border-2 shadow-none">
+        {/* Main Break Timer Card - Shows first on mobile */}
+        <Card className="border-2 shadow-none md:order-2">
           <CardContent className="p-6 md:p-12">
             {activeBreak ? (
               <div className="flex flex-col items-center justify-center py-8 md:py-16">
@@ -297,6 +244,59 @@ export default function BreakPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Stats Cards - Shows second on mobile, first on desktop */}
+        <div className="grid gap-4 md:grid-cols-4 md:order-1">
+          <Card className="border-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Today's Date</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {new Date().toLocaleDateString('en-US', { weekday: 'long' })}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Breaks Taken</CardTitle>
+              <Coffee className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">{completedBreaks}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {activeBreak ? 'One in progress' : 'Completed today'}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Time</CardTitle>
+              <Clock className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{formatDuration(totalBreakTime)}</div>
+              <p className="text-xs text-muted-foreground mt-1">{totalBreakTime} minutes</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Average Break</CardTitle>
+              <TrendingUp className="h-4 w-4 text-orange-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-600">{formatDuration(avgBreakTime)}</div>
+              <p className="text-xs text-muted-foreground mt-1">Per session</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   )
