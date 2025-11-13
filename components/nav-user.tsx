@@ -6,8 +6,6 @@ import { useState, useEffect } from 'react'
 import {
   ChevronsUpDown,
   LogOut,
-  Coins,
-  Star,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -49,19 +47,6 @@ export function NavUser() {
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
-  })
-
-  // Fetch gamification data (points and coins)
-  const { data: gamificationData } = useQuery({
-    queryKey: ['gamification-data'],
-    queryFn: async () => {
-      const res = await fetch('/api/gamification/points')
-      if (!res.ok) return null
-      return res.json()
-    },
-    staleTime: 30 * 1000, // 30 seconds
-    refetchOnWindowFocus: true,
-    enabled: !!employeeData?.employee?.id
   })
 
   const { data: profileData } = useQuery({
@@ -144,23 +129,9 @@ export function NavUser() {
               
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{displayName}</span>
-                <div className="flex items-center gap-2">
-                  <span className="truncate text-xs font-mono text-muted-foreground">
-                    {employeeData?.employee?.employeeCode || user.primaryEmailAddress?.emailAddress}
-                  </span>
-                  {gamificationData?.employeePoints && (
-                    <div className="flex items-center gap-1.5">
-                      <div className="flex items-center gap-0.5">
-                        <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
-                        <span className="text-xs font-medium">{gamificationData.employeePoints.points}</span>
-                      </div>
-                      <div className="flex items-center gap-0.5">
-                        <Coins className="h-3 w-3 text-amber-600 fill-amber-600" />
-                        <span className="text-xs font-medium text-amber-600">{gamificationData.employeePoints.coins}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <span className="truncate text-xs font-mono text-muted-foreground">
+                  {employeeData?.employee?.employeeCode || user.primaryEmailAddress?.emailAddress}
+                </span>
               </div>
               
               <ChevronsUpDown className="ml-auto size-4" />
@@ -194,19 +165,6 @@ export function NavUser() {
                           Admin
                         </Badge>
                       )}
-                    </div>
-                  )}
-                  
-                  {gamificationData?.employeePoints && (
-                    <div className="flex items-center gap-2 mt-1">
-                      <div className="flex items-center gap-0.5 text-xs">
-                        <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
-                        <span className="font-medium">{gamificationData.employeePoints.points}</span>
-                      </div>
-                      <div className="flex items-center gap-0.5 text-xs">
-                        <Coins className="h-3 w-3 text-amber-600 fill-amber-600" />
-                        <span className="font-medium text-amber-600">{gamificationData.employeePoints.coins}</span>
-                      </div>
                     </div>
                   )}
                 </div>
