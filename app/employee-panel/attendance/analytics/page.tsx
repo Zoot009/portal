@@ -16,7 +16,8 @@ import {
   CheckCircle,
   BarChart3,
   PieChart as PieChartIcon,
-  Activity
+  Activity,
+  Flame
 } from "lucide-react"
 import React, { useState, useEffect } from "react"
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSunday } from 'date-fns'
@@ -243,6 +244,76 @@ export default function MyAttendanceAnalyticsPage() {
   const overtimeHours = minutesToHours(stats.overtimeMinutes)
   const attendanceRate = stats.totalRecords > 0 ? (stats.present / stats.totalRecords) * 100 : 0
 
+  // Calculate attendance streak
+  const calculateStreak = () => {
+    const sortedRecords = [...filteredRecords]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    
+    let currentStreak = 0
+    let longestStreak = 0
+    let tempStreak = 0
+    let lastDate: Date | null = null
+    
+    // Sort records by date ascending for streak calculation
+    const ascendingRecords = [...filteredRecords]
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    
+    ascendingRecords.forEach(record => {
+      const isPresent = record.status === 'PRESENT' || record.status === 'WFH_APPROVED'
+      const recordDate = new Date(record.date)
+      
+      if (isPresent) {
+        if (lastDate) {
+          const dayDiff = Math.floor((recordDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24))
+          // Allow for weekends (2-3 days gap) but not more
+          if (dayDiff <= 3) {
+            tempStreak++
+          } else {
+            tempStreak = 1
+          }
+        } else {
+          tempStreak = 1
+        }
+        
+        if (tempStreak > longestStreak) {
+          longestStreak = tempStreak
+        }
+        
+        lastDate = recordDate
+      } else {
+        tempStreak = 0
+        lastDate = null
+      }
+    })
+    
+    // Calculate current streak from most recent records
+    for (let i = 0; i < sortedRecords.length; i++) {
+      const record = sortedRecords[i]
+      const isPresent = record.status === 'PRESENT' || record.status === 'WFH_APPROVED'
+      
+      if (isPresent) {
+        currentStreak++
+        
+        // Check if next record breaks the streak
+        if (i < sortedRecords.length - 1) {
+          const nextRecord = sortedRecords[i + 1]
+          const currentDate = new Date(record.date)
+          const nextDate = new Date(nextRecord.date)
+          const dayDiff = Math.floor((currentDate.getTime() - nextDate.getTime()) / (1000 * 60 * 60 * 24))
+          
+          // If gap is more than 3 days, break the streak
+          if (dayDiff > 3) break
+        }
+      } else {
+        break
+      }
+    }
+    
+    return { currentStreak, longestStreak }
+  }
+
+  const { currentStreak, longestStreak } = calculateStreak()
+
   // Estimate days needed to reach goal
   const avgDailyMinutes = stats.daysWithHours > 0 ? stats.totalMinutes / stats.daysWithHours : 0
   const daysNeeded = avgDailyMinutes > 0 ? Math.ceil(hoursToMinutes(hoursRemaining) / avgDailyMinutes) : 0
@@ -287,13 +358,6 @@ export default function MyAttendanceAnalyticsPage() {
     { name: 'Leave', value: stats.leave, color: '#f59e0b' },
     { name: 'Late', value: stats.late, color: '#f97316' }
   ].filter(item => item.value > 0)
-
-  // Performance metrics
-  const performanceScore = Math.min(100, Math.round(
-    (attendanceRate * 0.4) + 
-    (Math.min(progressPercentage, 100) * 0.4) + 
-    (stats.daysWithHours > 0 ? (stats.daysMetGoal / stats.daysWithHours) * 100 * 0.2 : 0)
-  ))
 
   return (
     <div className="space-y-6">
@@ -384,36 +448,59 @@ export default function MyAttendanceAnalyticsPage() {
             </Card>
           </div>
 
-          {/* Performance Score & Goal Progress */}
+          {/* Attendance Streak & Goal Progress */}
           <div className="grid gap-4 md:grid-cols-2">
-            <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+            <Card className="bg-gradient-to-br from-orange-50 to-red-50 border-orange-200">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Award className="h-5 w-5 text-blue-600" />
-                  Performance Score
+                  <Flame className="h-5 w-5 text-orange-600" />
+                  Attendance Streak
                 </CardTitle>
-                <CardDescription>Based on attendance, hours, and consistency</CardDescription>
+                <CardDescription>Track your consecutive attendance days</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-4xl font-bold text-blue-600">{performanceScore}</span>
-                  <span className="text-sm text-muted-foreground">/ 100</span>
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Flame className="h-8 w-8 text-orange-600" />
+                    <span className="text-5xl font-bold text-orange-600">{currentStreak}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {currentStreak === 1 ? 'Day' : 'Days'} Current Streak
+                  </p>
                 </div>
-                <Progress value={performanceScore} className="h-3" />
-                <div className="grid grid-cols-3 gap-4 pt-2">
+
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t">
                   <div className="text-center">
-                    <div className="text-xs text-muted-foreground">Attendance</div>
-                    <div className="text-sm font-semibold">{attendanceRate.toFixed(1)}%</div>
+                    <div className="text-xs text-muted-foreground mb-1">Longest Streak</div>
+                    <div className="flex items-center justify-center gap-1">
+                      <Award className="h-4 w-4 text-yellow-600" />
+                      <span className="text-2xl font-bold text-yellow-600">{longestStreak}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {longestStreak === 1 ? 'day' : 'days'}
+                    </p>
                   </div>
                   <div className="text-center">
-                    <div className="text-xs text-muted-foreground">Progress</div>
-                    <div className="text-sm font-semibold">{progressPercentage.toFixed(1)}%</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-xs text-muted-foreground">Days Met</div>
-                    <div className="text-sm font-semibold">{stats.daysMetGoal}/{stats.daysWithHours}</div>
+                    <div className="text-xs text-muted-foreground mb-1">Present Days</div>
+                    <div className="flex items-center justify-center gap-1">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <span className="text-2xl font-bold text-green-600">{stats.present}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      this period
+                    </p>
                   </div>
                 </div>
+
+                {currentStreak > 0 && (
+                  <div className="bg-orange-100 border border-orange-300 rounded-lg p-3 mt-4">
+                    <p className="text-xs text-orange-800 text-center font-medium">
+                      {currentStreak >= 5 ? '🔥 Amazing! Keep it up!' : 
+                       currentStreak >= 3 ? '👏 Great streak going!' : 
+                       '💪 Start of a great streak!'}
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
