@@ -45,6 +45,8 @@ interface AttendanceRecord {
   status: string
   checkInTime: string | null
   checkOutTime: string | null
+  breakInTime: string | null
+  breakOutTime: string | null
   totalHours: number
   overtime: number
   hasBeenEdited: boolean
@@ -78,6 +80,81 @@ export default function MyAttendanceAnalyticsPage() {
     const minutes = Math.round((decimalHours % 1) * 60)
     const hoursStr = hours >= 100 ? hours.toString() : hours.toString().padStart(2, '0')
     return `${hoursStr}:${minutes.toString().padStart(2, '0')}`
+  }
+
+  // Helper function to calculate total hours live (same as dashboard)
+  const calculateTotalHoursLive = (checkIn: string | null, breakIn: string | null, breakOut: string | null, checkOut: string | null, overtime: number): number => {
+    if (!checkIn || !checkOut) return 0
+    
+    try {
+      // Format times to HH:MM
+      const formatTimeForCalc = (dateString: string | null): string => {
+        if (!dateString) return ''
+        try {
+          const date = new Date(dateString)
+          if (isNaN(date.getTime())) return ''
+          const hours = date.getUTCHours().toString().padStart(2, '0')
+          const minutes = date.getUTCMinutes().toString().padStart(2, '0')
+          return `${hours}:${minutes}`
+        } catch {
+          return ''
+        }
+      }
+
+      const checkInTime = formatTimeForCalc(checkIn)
+      const checkOutTime = formatTimeForCalc(checkOut)
+      const breakInTime = formatTimeForCalc(breakIn)
+      const breakOutTime = formatTimeForCalc(breakOut)
+      
+      if (!checkInTime || !checkOutTime) return 0
+      
+      // Parse check-in and check-out times
+      const checkInParts = checkInTime.split(':').map(Number)
+      const checkOutParts = checkOutTime.split(':').map(Number)
+      
+      if (checkInParts.length !== 2 || checkOutParts.length !== 2) return 0
+      if (checkInParts.some(isNaN) || checkOutParts.some(isNaN)) return 0
+      
+      const [checkInHours, checkInMinutes] = checkInParts
+      const [checkOutHours, checkOutMinutes] = checkOutParts
+      
+      // Convert to total minutes
+      const checkInTotalMinutes = checkInHours * 60 + checkInMinutes
+      const checkOutTotalMinutes = checkOutHours * 60 + checkOutMinutes
+      
+      // Calculate work time (check-out minus check-in)
+      if (checkOutTotalMinutes <= checkInTotalMinutes) return 0
+      let totalWorkMinutes = checkOutTotalMinutes - checkInTotalMinutes
+      
+      // Subtract break time if both break times are provided
+      if (breakInTime && breakOutTime) {
+        const breakInParts = breakInTime.split(':').map(Number)
+        const breakOutParts = breakOutTime.split(':').map(Number)
+        
+        if (breakInParts.length === 2 && breakOutParts.length === 2 && 
+            !breakInParts.some(isNaN) && !breakOutParts.some(isNaN)) {
+          
+          const breakInTotalMinutes = breakInParts[0] * 60 + breakInParts[1]
+          const breakOutTotalMinutes = breakOutParts[0] * 60 + breakOutParts[1]
+          
+          // Calculate break duration (handle any order of break times)
+          const breakDurationMinutes = Math.abs(breakOutTotalMinutes - breakInTotalMinutes)
+          totalWorkMinutes -= breakDurationMinutes
+        }
+      }
+      
+      // Add overtime if provided
+      if (overtime && overtime > 0) {
+        const overtimeMinutes = Math.round(overtime * 60)
+        totalWorkMinutes += overtimeMinutes
+      }
+      
+      // Convert back to decimal hours
+      return Math.max(0, totalWorkMinutes) / 60
+    } catch (error) {
+      console.error('Error calculating hours:', error)
+      return 0
+    }
   }
 
   useEffect(() => {
@@ -199,9 +276,17 @@ export default function MyAttendanceAnalyticsPage() {
     if (record.status === 'LEAVE_APPROVED') acc.leave++
     if (record.status === 'LATE') acc.late++
     
-    // Hours calculation
-    if (record.totalHours > 0) {
-      const minutesWorked = hoursToMinutes(record.totalHours)
+    // Hours calculation using live calculation
+    const liveHours = calculateTotalHoursLive(
+      record.checkInTime,
+      record.breakInTime,
+      record.breakOutTime,
+      record.checkOutTime,
+      record.overtime || 0
+    )
+    
+    if (liveHours > 0) {
+      const minutesWorked = hoursToMinutes(liveHours)
       acc.totalMinutes += minutesWorked
       acc.daysWithHours++
       
@@ -320,26 +405,44 @@ export default function MyAttendanceAnalyticsPage() {
 
   // Prepare chart data - Daily hours trend
   const dailyHoursData = filteredRecords
-    .filter(r => r.totalHours > 0)
+    .map(record => {
+      const liveHours = calculateTotalHoursLive(
+        record.checkInTime,
+        record.breakInTime,
+        record.breakOutTime,
+        record.checkOutTime,
+        record.overtime || 0
+      )
+      return { ...record, liveHours }
+    })
+    .filter(r => r.liveHours > 0)
     .sort((a, b) => a.date.localeCompare(b.date))
     .map(record => ({
       date: format(new Date(record.date), 'MMM dd'),
-      hours: parseFloat(record.totalHours.toFixed(2)),
+      hours: parseFloat(record.liveHours.toFixed(2)),
       goal: minutesToHours(dailyGoalMinutes)
     }))
 
   // Prepare chart data - Weekly aggregation
   const weeklyData = filteredRecords.reduce((acc: any[], record) => {
+    const liveHours = calculateTotalHoursLive(
+      record.checkInTime,
+      record.breakInTime,
+      record.breakOutTime,
+      record.checkOutTime,
+      record.overtime || 0
+    )
+    
     const weekStart = format(startOfWeek(new Date(record.date), { weekStartsOn: 1 }), 'MMM dd')
     const existing = acc.find(w => w.week === weekStart)
     
     if (existing) {
-      existing.hours += record.totalHours
+      existing.hours += liveHours
       existing.days++
     } else {
       acc.push({
         week: weekStart,
-        hours: record.totalHours,
+        hours: liveHours,
         days: 1
       })
     }
