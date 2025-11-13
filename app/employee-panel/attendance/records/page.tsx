@@ -570,15 +570,15 @@ export default function MyAttendanceRecordsPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Hours Adjusted</CardTitle>
-            <TrendingUp className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-sm font-medium">Days Worked</CardTitle>
+            <UserCheck className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${hoursAdjusted >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {loading ? '-' : `${hoursAdjusted >= 0 ? '+' : ''}${formatHoursToTime(Math.abs(hoursAdjusted))}`}
+            <div className="text-2xl font-bold text-blue-600">
+              {loading ? '-' : stats.daysWithHours}
             </div>
             <p className="text-xs text-muted-foreground">
-              Total adjustment
+              Out of {filteredRecords.length} total
             </p>
           </CardContent>
         </Card>
