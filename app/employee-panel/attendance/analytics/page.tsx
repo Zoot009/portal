@@ -635,13 +635,55 @@ export default function MyAttendanceAnalyticsPage() {
                   </div>
                 </div>
 
+                {/* Pace Analysis */}
+                <div className="border-t pt-3 space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Current Pace</span>
+                    <span className="font-semibold text-blue-600">
+                      {formatHoursToTime(avgDailyHours)}/day
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Required Pace</span>
+                    <span className="font-semibold text-purple-600">
+                      {formatHoursToTime(minutesToHours(dailyGoalMinutes))}/day
+                    </span>
+                  </div>
+
+                  {hoursRemaining > 0 && (
+                    <>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Remaining Days</span>
+                        <span className="font-semibold text-orange-600">
+                          {workingDays - stats.daysWithHours} days
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Needed Per Day</span>
+                        <span className="font-semibold text-red-600">
+                          {formatHoursToTime(hoursRemaining / Math.max(1, workingDays - stats.daysWithHours))}/day
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+
                 {hoursRemaining > 0 ? (
                   <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
                     <div className="flex items-start gap-2">
                       <Target className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
-                      <div className="text-xs text-orange-700">
-                        <strong>{formatHoursToTime(hoursRemaining)}</strong> more hours needed
-                        {daysNeeded > 0 && <> • ~<strong>{daysNeeded} days</strong> at current pace</>}
+                      <div className="text-xs text-orange-700 space-y-1">
+                        <div>
+                          <strong>{formatHoursToTime(hoursRemaining)}</strong> hours remaining
+                        </div>
+                        <div>
+                          Need <strong>{formatHoursToTime(hoursRemaining / Math.max(1, workingDays - stats.daysWithHours))}</strong> per day 
+                          {daysNeeded > 0 && (
+                            <> (or maintain current pace for <strong>~{daysNeeded} days</strong>)</>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
