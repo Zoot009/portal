@@ -230,16 +230,16 @@ export default function BreakPage() {
 
         {/* Main Break Timer Card */}
         <Card className="border-2 shadow-none">
-          <CardContent className="p-12">
+          <CardContent className="p-6 md:p-12">
             {activeBreak ? (
-              <div className="flex flex-col items-center justify-center py-16">
-                <div className="text-8xl font-bold font-mono tracking-wider text-primary mb-8">
+              <div className="flex flex-col items-center justify-center py-8 md:py-16">
+                <div className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-bold font-mono tracking-wider text-primary mb-4 md:mb-8">
                   {formatTime(elapsedTime)}
                 </div>
-                <Badge variant="default" className="text-base px-6 py-2 mb-2">
+                <Badge variant="default" className="text-sm md:text-base px-4 md:px-6 py-1.5 md:py-2 mb-2">
                   🔴 Break Active
                 </Badge>
-                <p className="text-base text-muted-foreground mb-8">
+                <p className="text-sm md:text-base text-muted-foreground mb-6 md:mb-8">
                   Started at {new Date(activeBreak.startTime).toLocaleTimeString('en-US', {
                     hour: '2-digit',
                     minute: '2-digit',
@@ -251,44 +251,44 @@ export default function BreakPage() {
                   variant="destructive"
                   onClick={() => endBreakMutation.mutate()}
                   disabled={endBreakMutation.isPending}
-                  className="h-14 px-12 text-lg font-semibold"
+                  className="h-12 md:h-14 px-8 md:px-12 text-base md:text-lg font-semibold"
                 >
                   {endBreakMutation.isPending ? (
                     <>
-                      <Loader2 className="mr-3 h-5 w-5 animate-spin" />
+                      <Loader2 className="mr-2 md:mr-3 h-4 md:h-5 w-4 md:w-5 animate-spin" />
                       Ending Break...
                     </>
                   ) : (
                     <>
-                      <Square className="mr-3 h-5 w-5" />
+                      <Square className="mr-2 md:mr-3 h-4 md:h-5 w-4 md:w-5" />
                       End Break
                     </>
                   )}
                 </Button>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-16">
-                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-6">
-                  <Coffee className="h-16 w-16 text-primary" />
+              <div className="flex flex-col items-center justify-center py-8 md:py-16">
+                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-4 md:mb-6">
+                  <Coffee className="h-12 w-12 md:h-16 md:w-16 text-primary" />
                 </div>
-                <h2 className="text-3xl font-bold mb-3">Take a Break</h2>
-                <p className="text-base text-muted-foreground max-w-lg text-center mb-8">
+                <h2 className="text-2xl md:text-3xl font-bold mb-2 md:mb-3">Take a Break</h2>
+                <p className="text-sm md:text-base text-muted-foreground max-w-lg text-center mb-6 md:mb-8 px-4">
                   Click the button below to start your break timer. Your break time will be tracked automatically.
                 </p>
                 <Button
                   size="lg"
                   onClick={() => startBreakMutation.mutate()}
                   disabled={startBreakMutation.isPending}
-                  className="h-14 px-12 text-lg font-semibold"
+                  className="h-12 md:h-14 px-8 md:px-12 text-base md:text-lg font-semibold"
                 >
                   {startBreakMutation.isPending ? (
                     <>
-                      <Loader2 className="mr-3 h-5 w-5 animate-spin" />
+                      <Loader2 className="mr-2 md:mr-3 h-4 md:h-5 w-4 md:w-5 animate-spin" />
                       Starting Break...
                     </>
                   ) : (
                     <>
-                      <Play className="mr-3 h-5 w-5" />
+                      <Play className="mr-2 md:mr-3 h-4 md:h-5 w-4 md:w-5" />
                       Start Break
                     </>
                   )}
