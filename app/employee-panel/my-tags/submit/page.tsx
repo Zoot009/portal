@@ -194,36 +194,39 @@ export default function SubmitTagsPage() {
       return
     }
 
-    // Check mandatory tags
-    const mandatoryTags = assignedTags.filter(a => a.isMandatory)
-    const submittedTagIds = tagEntries
-      .filter(e => e.count && parseInt(e.count) > 0)
-      .map(e => parseInt(e.tagId))
-    
-    const missingMandatory = mandatoryTags.filter(mt => !submittedTagIds.includes(mt.tagId))
-    
-    if (missingMandatory.length > 0) {
-      const missingNames = missingMandatory.map(mt => mt.tag.tagName).join(', ')
-      toast.error(`Mandatory tasks must be completed: ${missingNames}`)
-      return
-    }
-
     setIsSubmitting(true)
     
     try {
+      // Get all submitted tags
+      const submittedTags = tagEntries
+        .filter(e => e.count && parseInt(e.count) > 0)
+        .map(e => ({
+          tagId: e.tagId,
+          count: e.count,
+          minutes: e.minutes,
+        }))
+
+      // Add mandatory tags with count 0 if not submitted
+      const submittedTagIds = submittedTags.map(t => parseInt(t.tagId))
+      const mandatoryTags = assignedTags.filter(a => a.isMandatory)
+      
+      mandatoryTags.forEach(mt => {
+        if (!submittedTagIds.includes(mt.tagId)) {
+          submittedTags.push({
+            tagId: mt.tagId.toString(),
+            count: "0",
+            minutes: "0",
+          })
+        }
+      })
+
       const response = await fetch('/api/logs/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           employeeId: employeeData?.data?.id,
           date: date,
-          tags: tagEntries
-            .filter(e => e.count && parseInt(e.count) > 0)
-            .map(e => ({
-              tagId: e.tagId,
-              count: e.count,
-              minutes: e.minutes,
-            })),
+          tags: submittedTags,
         }),
       })
 

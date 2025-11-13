@@ -28,30 +28,18 @@ export function EmployeePenaltyReminder() {
   useEffect(() => {
     const checkEmployeeAndShowReminder = async () => {
       try {
-        console.log('Employee penalty reminder: Starting check')
         // Ensure we're on the client side
-        if (typeof window === 'undefined') {
-          console.log('Not on client side, skipping')
-          return
-        }
+        if (typeof window === 'undefined') return
         
         // Fetch current user info
         const response = await fetch('/api/auth/me')
-        if (!response.ok) {
-          console.log('Failed to fetch user info')
-          return
-        }
+        if (!response.ok) return
         
         const data = await response.json()
         const employee = data.employee
         
-        console.log('Current employee:', employee)
-        
         // Only show for non-admin employees
-        if (!employee || employee.role === 'ADMIN') {
-          console.log('Employee is admin or not found, skipping')
-          return
-        }
+        if (!employee || employee.role === 'ADMIN') return
         
         setEmployeeId(employee.id)
         
@@ -61,12 +49,9 @@ export function EmployeePenaltyReminder() {
           const snoozeTime = new Date(snoozeUntil).getTime()
           const now = new Date().getTime()
           
-          console.log('Snooze found, checking time:', { snoozeTime, now, remaining: snoozeTime - now })
-          
           if (now < snoozeTime) {
             // Still in snooze period, set timer to show after snooze ends
             const remainingTime = snoozeTime - now
-            console.log('Still in snooze period, will check again in:', remainingTime, 'ms')
             const timer = setTimeout(() => {
               sessionStorage.removeItem('employee-penalty-reminder-snooze-until')
               checkForUnviewedItems(employee.id)
@@ -75,7 +60,6 @@ export function EmployeePenaltyReminder() {
             return () => clearTimeout(timer)
           } else {
             // Snooze period expired, clear it
-            console.log('Snooze period expired, clearing')
             sessionStorage.removeItem('employee-penalty-reminder-snooze-until')
           }
         }
@@ -83,12 +67,10 @@ export function EmployeePenaltyReminder() {
         // Check if already dismissed in current session (permanent dismiss)
         const dismissed = sessionStorage.getItem('employee-penalty-reminder-dismissed')
         if (dismissed) {
-          console.log('Already dismissed in this session')
           return // Already dismissed in this session
         }
         
         // Check for unviewed penalties/warnings
-        console.log('Setting timer to check for unviewed items')
         const timer = setTimeout(() => {
           checkForUnviewedItems(employee.id)
         }, 2000) // 2 seconds delay for better UX
@@ -104,26 +86,18 @@ export function EmployeePenaltyReminder() {
 
   const checkForUnviewedItems = async (empId: number) => {
     try {
-      console.log('Checking for unviewed items for employee:', empId)
       const response = await fetch(`/api/employee/unviewed-penalties?employeeId=${empId}`)
-      if (!response.ok) {
-        console.error('Failed to fetch unviewed items:', response.status)
-        return
-      }
+      if (!response.ok) return
       
       const result = await response.json()
-      console.log('Unviewed items result:', result)
       
       if (result.success && result.hasUnviewed) {
-        console.log('Showing dialog with unviewed items')
         setUnviewedData({
           penaltyCount: result.data.penaltyCount,
           warningCount: result.data.warningCount,
           hasUnviewed: true,
         })
         setShowDialog(true)
-      } else {
-        console.log('No unviewed items found')
       }
     } catch (error) {
       console.error('Error checking unviewed items:', error)
