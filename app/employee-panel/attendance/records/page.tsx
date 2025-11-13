@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { CalendarIcon, Clock, Search, UserCheck, UserX, Calendar, TrendingUp, Edit, ChevronDown, ChevronUp, Loader2 } from "lucide-react"
+import { CalendarIcon, Clock, Search, UserCheck, UserX, Calendar, TrendingUp, Edit, ChevronDown, ChevronUp, Loader2, CalendarCheck } from "lucide-react"
 import React, { useState, useEffect } from "react"
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSunday, eachDayOfInterval } from "date-fns"
 
@@ -557,13 +557,13 @@ export default function MyAttendanceRecordsPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Non-Edited Hours</CardTitle>
-            <Clock className="h-4 w-4 text-gray-600" />
+            <CardTitle className="text-sm font-medium">Days Present</CardTitle>
+            <CalendarCheck className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-600">{loading ? '-' : formatHoursToTime(originalTotalHours)}</div>
+            <div className="text-2xl font-bold text-green-600">{loading ? '-' : stats.present}</div>
             <p className="text-xs text-muted-foreground">
-              Before any edits
+              Working days
             </p>
           </CardContent>
         </Card>
