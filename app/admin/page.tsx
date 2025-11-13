@@ -149,16 +149,12 @@ function AdminPage() {
 
   // Handle delete warning
   const handleDeleteWarning = (warningId: number) => {
-    if (confirm('Are you sure you want to delete this warning? This action cannot be undone.')) {
-      deleteWarningMutation.mutate(warningId);
-    }
+    deleteWarningMutation.mutate(warningId);
   };
 
   // Handle delete penalty
   const handleDeletePenalty = (penaltyId: number) => {
-    if (confirm('Are you sure you want to delete this penalty? This action cannot be undone.')) {
-      deletePenaltyMutation.mutate(penaltyId);
-    }
+    deletePenaltyMutation.mutate(penaltyId);
   };
 
   // Handle edit warning
