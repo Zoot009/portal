@@ -85,9 +85,9 @@ const data = {
   ],
   navSecondary: [
     {
-      title: "My Warnings & Penalties",
-      url: "/employee-panel/my-penalties",
-      icon: ShieldAlert,
+      title: "My Profile",
+      url: "/employee-panel/my-profile",
+      icon: User,
     },
     {
       title: "My Issues",
@@ -95,9 +95,9 @@ const data = {
       icon: AlertCircle,
     },
     {
-      title: "My Profile",
-      url: "/employee-panel/my-profile",
-      icon: User,
+      title: "My Warnings & Penalties",
+      url: "/employee-panel/my-penalties",
+      icon: ShieldAlert,
     },
   ],
 }
