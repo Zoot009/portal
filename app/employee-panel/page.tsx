@@ -78,6 +78,102 @@ export default function EmployeeDashboardPage() {
   const totalWorkDays = thisMonthAttendance.length
   const attendanceRate = totalWorkDays > 0 ? ((presentDays / totalWorkDays) * 100).toFixed(1) : 0
 
+  // Helper function to calculate total hours live (same as attendance records page)
+  const calculateTotalHoursLive = (checkIn: string | null, breakIn: string | null, breakOut: string | null, checkOut: string | null, overtime: number): number => {
+    if (!checkIn || !checkOut) return 0
+    
+    try {
+      // Format times to HH:MM
+      const formatTimeForCalc = (dateString: string | null): string => {
+        if (!dateString) return ''
+        try {
+          const date = new Date(dateString)
+          if (isNaN(date.getTime())) return ''
+          const hours = date.getUTCHours().toString().padStart(2, '0')
+          const minutes = date.getUTCMinutes().toString().padStart(2, '0')
+          return `${hours}:${minutes}`
+        } catch {
+          return ''
+        }
+      }
+
+      const checkInTime = formatTimeForCalc(checkIn)
+      const checkOutTime = formatTimeForCalc(checkOut)
+      const breakInTime = formatTimeForCalc(breakIn)
+      const breakOutTime = formatTimeForCalc(breakOut)
+      
+      if (!checkInTime || !checkOutTime) return 0
+      
+      // Parse check-in and check-out times
+      const checkInParts = checkInTime.split(':').map(Number)
+      const checkOutParts = checkOutTime.split(':').map(Number)
+      
+      if (checkInParts.length !== 2 || checkOutParts.length !== 2) return 0
+      if (checkInParts.some(isNaN) || checkOutParts.some(isNaN)) return 0
+      
+      const [checkInHours, checkInMinutes] = checkInParts
+      const [checkOutHours, checkOutMinutes] = checkOutParts
+      
+      // Convert to total minutes
+      const checkInTotalMinutes = checkInHours * 60 + checkInMinutes
+      const checkOutTotalMinutes = checkOutHours * 60 + checkOutMinutes
+      
+      // Calculate work time (check-out minus check-in)
+      if (checkOutTotalMinutes <= checkInTotalMinutes) return 0
+      let totalWorkMinutes = checkOutTotalMinutes - checkInTotalMinutes
+      
+      // Subtract break time if both break times are provided
+      if (breakInTime && breakOutTime) {
+        const breakInParts = breakInTime.split(':').map(Number)
+        const breakOutParts = breakOutTime.split(':').map(Number)
+        
+        if (breakInParts.length === 2 && breakOutParts.length === 2 && 
+            !breakInParts.some(isNaN) && !breakOutParts.some(isNaN)) {
+          
+          const breakInTotalMinutes = breakInParts[0] * 60 + breakInParts[1]
+          const breakOutTotalMinutes = breakOutParts[0] * 60 + breakOutParts[1]
+          
+          // Calculate break duration (handle any order of break times)
+          const breakDurationMinutes = Math.abs(breakOutTotalMinutes - breakInTotalMinutes)
+          totalWorkMinutes -= breakDurationMinutes
+        }
+      }
+      
+      // Add overtime if provided
+      if (overtime && overtime > 0) {
+        const overtimeMinutes = Math.round(overtime * 60)
+        totalWorkMinutes += overtimeMinutes
+      }
+      
+      // Convert back to decimal hours
+      return Math.max(0, totalWorkMinutes) / 60
+    } catch (error) {
+      console.error('Error calculating total hours:', error)
+      return 0
+    }
+  }
+
+  // Calculate total work hours this month using live calculation
+  const totalWorkHours = thisMonthAttendance.reduce((sum: number, record: any) => {
+    const liveHours = calculateTotalHoursLive(
+      record.checkInTime,
+      record.breakInTime,
+      record.breakOutTime,
+      record.checkOutTime,
+      record.overtime || 0
+    )
+    return sum + liveHours
+  }, 0)
+
+  // Helper to format hours to HH:MM
+  const formatHoursToTime = (decimalHours: number): string => {
+    if (!decimalHours || decimalHours === 0) return '00:00'
+    const hours = Math.floor(decimalHours)
+    const minutes = Math.round((decimalHours % 1) * 60)
+    const hoursStr = hours >= 100 ? hours.toString() : hours.toString().padStart(2, '0')
+    return `${hoursStr}:${minutes.toString().padStart(2, '0')}`
+  }
+
   // Issues stats
   const pendingIssues = issues.filter((issue: any) => issue.issueStatus.toLowerCase() === 'pending').length
   const resolvedIssues = issues.filter((issue: any) => issue.issueStatus.toLowerCase() === 'resolved').length
@@ -154,7 +250,7 @@ export default function EmployeeDashboardPage() {
               <Loader2 className="h-6 w-6 animate-spin" />
             ) : (
               <>
-                <div className="text-2xl font-bold">{totalWorkHours.toFixed(1)}h</div>
+                <div className="text-2xl font-bold">{formatHoursToTime(totalWorkHours)}</div>
                 <p className="text-xs text-muted-foreground">
                   This month
                 </p>
@@ -225,7 +321,16 @@ export default function EmployeeDashboardPage() {
                       <p className="text-xs text-muted-foreground">{record.status.replace('_', ' ')}</p>
                     </div>
                     <div className="text-sm font-medium">
-                      {record.totalHours ? `${record.totalHours.toFixed(1)}h` : '-'}
+                      {record.checkInTime && record.checkOutTime 
+                        ? formatHoursToTime(calculateTotalHoursLive(
+                            record.checkInTime,
+                            record.breakInTime,
+                            record.breakOutTime,
+                            record.checkOutTime,
+                            record.overtime || 0
+                          ))
+                        : '-'
+                      }
                     </div>
                   </div>
                 ))}
