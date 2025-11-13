@@ -322,19 +322,109 @@ export default function MyAttendanceRecordsPage() {
     }
   }
 
+  // Helper function to calculate total hours live (matches admin panel logic)
+  const calculateTotalHoursLive = (checkIn: string | null, breakIn: string | null, breakOut: string | null, checkOut: string | null, overtime: number): string => {
+    if (!checkIn || !checkOut) return '00:00'
+    
+    try {
+      // Format times to HH:MM
+      const formatTimeForCalc = (dateString: string | null): string => {
+        if (!dateString) return ''
+        try {
+          const date = new Date(dateString)
+          if (isNaN(date.getTime())) return ''
+          const hours = date.getUTCHours().toString().padStart(2, '0')
+          const minutes = date.getUTCMinutes().toString().padStart(2, '0')
+          return `${hours}:${minutes}`
+        } catch {
+          return ''
+        }
+      }
+
+      const checkInTime = formatTimeForCalc(checkIn)
+      const checkOutTime = formatTimeForCalc(checkOut)
+      const breakInTime = formatTimeForCalc(breakIn)
+      const breakOutTime = formatTimeForCalc(breakOut)
+      
+      if (!checkInTime || !checkOutTime) return '00:00'
+      
+      // Parse check-in and check-out times
+      const checkInParts = checkInTime.split(':').map(Number)
+      const checkOutParts = checkOutTime.split(':').map(Number)
+      
+      if (checkInParts.length !== 2 || checkOutParts.length !== 2) return '00:00'
+      if (checkInParts.some(isNaN) || checkOutParts.some(isNaN)) return '00:00'
+      
+      const [checkInHours, checkInMinutes] = checkInParts
+      const [checkOutHours, checkOutMinutes] = checkOutParts
+      
+      // Convert to total minutes
+      const checkInTotalMinutes = checkInHours * 60 + checkInMinutes
+      const checkOutTotalMinutes = checkOutHours * 60 + checkOutMinutes
+      
+      // Calculate work time (check-out minus check-in)
+      if (checkOutTotalMinutes <= checkInTotalMinutes) return '00:00'
+      let totalWorkMinutes = checkOutTotalMinutes - checkInTotalMinutes
+      
+      // Subtract break time if both break times are provided
+      if (breakInTime && breakOutTime) {
+        const breakInParts = breakInTime.split(':').map(Number)
+        const breakOutParts = breakOutTime.split(':').map(Number)
+        
+        if (breakInParts.length === 2 && breakOutParts.length === 2 && 
+            !breakInParts.some(isNaN) && !breakOutParts.some(isNaN)) {
+          
+          const breakInTotalMinutes = breakInParts[0] * 60 + breakInParts[1]
+          const breakOutTotalMinutes = breakOutParts[0] * 60 + breakOutParts[1]
+          
+          // Calculate break duration (handle any order of break times)
+          const breakDurationMinutes = Math.abs(breakOutTotalMinutes - breakInTotalMinutes)
+          totalWorkMinutes -= breakDurationMinutes
+        }
+      }
+      
+      // Add overtime if provided
+      if (overtime && overtime > 0) {
+        const overtimeMinutes = Math.round(overtime * 60)
+        totalWorkMinutes += overtimeMinutes
+      }
+      
+      // Convert back to HH:MM format
+      const finalHours = Math.floor(Math.max(0, totalWorkMinutes) / 60)
+      const finalMinutes = Math.max(0, totalWorkMinutes) % 60
+      
+      return `${finalHours.toString().padStart(2, '0')}:${finalMinutes.toString().padStart(2, '0')}`
+    } catch (error) {
+      console.error('Error calculating total hours:', error)
+      return '00:00'
+    }
+  }
+
   // Calculate stats from filtered data including hours adjustments
   const stats = filteredRecords.reduce((acc, record) => {
     acc.totalRecords++
     if (record.status === 'PRESENT' || record.status === 'WFH_APPROVED') acc.present++
     if (record.status === 'ABSENT') acc.absent++
     
-    // Calculate current total hours in minutes for accurate calculation
-    if (record.totalHours > 0) {
-      const minutesWorked = hoursToMinutes(record.totalHours)
-      acc.currentTotalMinutes += minutesWorked
+    // Calculate hours using the same live calculation as the table display
+    const liveHoursStr = calculateTotalHoursLive(
+      record.checkInTime, 
+      record.breakInTime, 
+      record.breakOutTime, 
+      record.checkOutTime, 
+      record.overtime
+    )
+    
+    // Convert HH:MM to minutes
+    const [hours, minutes] = liveHoursStr.split(':').map(Number)
+    const currentMinutes = (hours * 60) + minutes
+    
+    if (currentMinutes > 0) {
+      acc.currentTotalMinutes += currentMinutes
       acc.daysWithHours++
     }
     
+    // For original hours, use the database value (totalHours) - this represents what was originally stored
     // If record has been edited, find original hours from edit history
     if (record.hasBeenEdited && record.editHistory) {
       const totalHoursEdit = record.editHistory.find(edit => edit.fieldChanged === 'totalHours')
@@ -342,11 +432,11 @@ export default function MyAttendanceRecordsPage() {
         const originalHours = parseFloat(totalHoursEdit.oldValue) || 0
         acc.originalTotalMinutes += hoursToMinutes(originalHours)
       } else {
-        // If no edit to totalHours, use current value for original too
+        // If no edit to totalHours, use current stored value for original
         acc.originalTotalMinutes += hoursToMinutes(record.totalHours)
       }
     } else {
-      // Not edited, so original equals current
+      // Not edited, use stored totalHours for original
       acc.originalTotalMinutes += hoursToMinutes(record.totalHours)
     }
     
@@ -683,7 +773,9 @@ export default function MyAttendanceRecordsPage() {
                       <TableCell className="text-center font-mono text-sm">{formatTime(record.breakInTime)}</TableCell>
                       <TableCell className="text-center font-mono text-sm">{formatTime(record.breakOutTime)}</TableCell>
                       <TableCell className="text-center font-mono text-sm">{formatTime(record.checkOutTime)}</TableCell>
-                      <TableCell className="text-center font-mono text-sm font-medium">{formatHoursToTime(record.totalHours)}</TableCell>
+                      <TableCell className="text-center font-mono text-sm font-medium">
+                        {calculateTotalHoursLive(record.checkInTime, record.breakInTime, record.breakOutTime, record.checkOutTime, record.overtime)}
+                      </TableCell>
                       <TableCell className="text-center font-mono text-sm text-gray-600">{calculateBreakTime(record.breakInTime, record.breakOutTime)}</TableCell>
                       <TableCell className="text-center font-mono text-sm font-medium text-blue-600">{record.overtime > 0 ? formatHoursToTime(record.overtime) : '00:00'}</TableCell>
                     </TableRow>
