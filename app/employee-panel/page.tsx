@@ -178,11 +178,6 @@ export default function EmployeeDashboardPage() {
   const pendingIssues = issues.filter((issue: any) => issue.issueStatus.toLowerCase() === 'pending').length
   const resolvedIssues = issues.filter((issue: any) => issue.issueStatus.toLowerCase() === 'resolved').length
 
-  // Calculate total work hours this month
-  const totalWorkHours = thisMonthAttendance.reduce((sum: number, record: any) => {
-    return sum + (record.totalHours || 0)
-  }, 0)
-
   // Logs this month
   const thisMonthLogs = logs.filter((log: any) => {
     const logDate = new Date(log.date)
