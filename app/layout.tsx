@@ -5,6 +5,7 @@ import { Providers } from "@/lib/providers";
 import { ClerkProvider } from '@clerk/nextjs';
 import { ConditionalLayout } from "@/components/conditional-layout";
 import { Toaster } from "sonner";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,18 +27,26 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (                                                                                                                                                                
+  return (
+
     <ClerkProvider>
-      <html lang="en">
+      <html lang="en" suppressHydrationWarning>
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
-          <Providers>
-            <ConditionalLayout>
-              {children}
-            </ConditionalLayout>
-            <Toaster />
-          </Providers>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <Providers>
+              <ConditionalLayout>
+                {children}
+              </ConditionalLayout>
+              <Toaster />
+            </Providers>
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>

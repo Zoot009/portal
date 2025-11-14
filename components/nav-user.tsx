@@ -3,9 +3,13 @@
 import { useUser, useClerk } from '@clerk/nextjs'
 import { useQuery } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
+import { useTheme } from 'next-themes'
 import {
   ChevronsUpDown,
   LogOut,
+  Moon,
+  Sun,
+  Monitor,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -35,6 +39,7 @@ export function NavUser() {
   const { isMobile } = useSidebar()
   const { user } = useUser()
   const { signOut } = useClerk()
+  const { theme, setTheme } = useTheme()
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
 
   // Fetch employee data including profile photo
@@ -170,6 +175,20 @@ export function NavUser() {
                 </div>
               </div>
             </DropdownMenuLabel>
+            
+            <DropdownMenuSeparator />
+            
+            <DropdownMenuLabel className="text-xs text-muted-foreground">Theme</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => setTheme('light')}>
+              <Sun />
+              <span>Light</span>
+              {theme === 'light' && <span className="ml-auto">✓</span>}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTheme('dark')}>
+              <Moon />
+              <span>Dark</span>
+              {theme === 'dark' && <span className="ml-auto">✓</span>}
+            </DropdownMenuItem>
             
             <DropdownMenuSeparator />
             
