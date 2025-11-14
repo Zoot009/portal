@@ -613,7 +613,7 @@ export default function MyAttendanceRecordsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4 bg-white p-4 rounded-lg border">
+      <div className="flex flex-col md:flex-row gap-4 bg-white dark:bg-zinc-900 p-4 rounded-lg border dark:border">
         <Select value={cycleFilter} onValueChange={setCycleFilter}>
           <SelectTrigger className="w-[280px]">
             <SelectValue placeholder="Select Cycle" />
@@ -753,7 +753,7 @@ export default function MyAttendanceRecordsPage() {
                             <ChevronDown className="h-4 w-4 text-gray-500" />
                         )}
                       </TableCell>
-                      <TableCell className="font-medium text-gray-900">
+                      <TableCell className="font-medium text-gray-900 dark:text-gray-100">
                         <div className="flex items-center gap-2">
                           {record.date}
                           {record.hasBeenEdited && (
@@ -763,7 +763,7 @@ export default function MyAttendanceRecordsPage() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm text-gray-600">{format(new Date(record.date), 'EEEE')}</TableCell>
+                      <TableCell className="text-sm text-gray-600 dark:text-gray-400">{format(new Date(record.date), 'EEEE')}</TableCell>
                       <TableCell>
                         <Badge className={getStatusColor(record.status)}>
                           {record.status.replace(/_/g, ' ')}
@@ -776,33 +776,33 @@ export default function MyAttendanceRecordsPage() {
                       <TableCell className="text-center font-mono text-sm font-medium">
                         {calculateTotalHoursLive(record.checkInTime, record.breakInTime, record.breakOutTime, record.checkOutTime, record.overtime)}
                       </TableCell>
-                      <TableCell className="text-center font-mono text-sm text-gray-600">{calculateBreakTime(record.breakInTime, record.breakOutTime)}</TableCell>
+                      <TableCell className="text-center font-mono text-sm text-gray-600 dark:text-gray-400">{calculateBreakTime(record.breakInTime, record.breakOutTime)}</TableCell>
                       <TableCell className="text-center font-mono text-sm font-medium text-blue-600">{record.overtime > 0 ? formatHoursToTime(record.overtime) : '00:00'}</TableCell>
                     </TableRow>
                     
                     {/* Expandable Change History Row */}
                     {record.hasBeenEdited && expandedRecordId === record.id && record.editHistory && (
-                      <TableRow key={`${record.id}-details`} className="bg-orange-50/30">
+                      <TableRow key={`${record.id}-details`} className="bg-orange-50/30 dark:bg-orange-950/20">
                         <TableCell colSpan={11} className="py-4">
                           <div className="space-y-3 px-4">
                             <div className="flex items-center justify-between">
-                              <h4 className="font-semibold text-sm text-gray-900">Edit History</h4>
-                              <div className="text-xs text-gray-500">
+                              <h4 className="font-semibold text-sm text-gray-900 dark:text-gray-100">Edit History</h4>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
                                 Edited {record.editedAt ? format(new Date(record.editedAt), 'MMM d, yyyy \'at\' h:mm a') : 'N/A'}
                               </div>
                             </div>
                             
                             {record.editReason && (
-                              <div className="bg-white rounded-md p-3 border border-orange-200">
-                                <div className="text-xs font-medium text-gray-700 mb-1">Reason for Edit:</div>
-                                <div className="text-sm text-gray-600">{record.editReason}</div>
+                              <div className="bg-white dark:bg-gray-800 rounded-md p-3 border border-orange-200 dark:border-orange-800">
+                                <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Reason for Edit:</div>
+                                <div className="text-sm text-gray-600 dark:text-gray-400">{record.editReason}</div>
                               </div>
                             )}
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                               {record.editHistory.map((edit, idx) => (
-                                <div key={idx} className="bg-white rounded-md p-3 border border-gray-200">
-                                  <div className="text-xs font-medium text-gray-700 mb-2 capitalize">
+                                <div key={idx} className="bg-white dark:bg-gray-800 rounded-md p-3 border border-gray-200 dark:border-gray-700">
+                                  <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 capitalize">
                                     {edit.fieldChanged.replace(/([A-Z])/g, ' $1').trim()}
                                   </div>
                                   <div className="flex items-center gap-2 text-sm">
