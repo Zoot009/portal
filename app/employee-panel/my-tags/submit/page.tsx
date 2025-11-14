@@ -212,7 +212,7 @@ export default function SubmitTagsPage() {
       .filter(e => e.count && parseInt(e.count) > 0)
       .map(e => parseInt(e.tagId))
     
-    const missingMandatory = mandatoryTags.filter(mt => !submittedTagIds.includes(mt.tagId))
+    const missingMandatory = mandatoryTags.filter(mt => !submittedTagIds.includes(mt.tag.id))
     
     if (missingMandatory.length > 0) {
       const missingNames = missingMandatory.map(mt => mt.tag.tagName).join(', ')
