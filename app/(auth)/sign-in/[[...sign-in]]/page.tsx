@@ -3,6 +3,10 @@
 import Image from 'next/image'
 import { SignIn } from '@clerk/nextjs'
 
+// Enable route caching
+export const dynamic = 'force-static'
+export const revalidate = 3600 // Revalidate every hour
+
 export default function SignInPage() {
   const handleSignInClick = () => {
     // This will trigger the Clerk sign-in modal or redirect
