@@ -60,40 +60,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get employee's assigned tags to check mandatory ones
-    const assignments = await prisma.assignment.findMany({
-      where: {
-        employeeId: parseInt(employeeId),
-      },
-      include: {
-        tag: true,
-      },
-    })
-
-    // Check if all mandatory tags are submitted with count > 0
-    const mandatoryTags = assignments.filter(a => a.isMandatory)
-    const submittedTagIds = tags
-      .filter((t: any) => t.count && parseInt(t.count) > 0)
-      .map((t: any) => parseInt(t.tagId))
-
-    const missingMandatoryTags = mandatoryTags.filter(
-      mt => !submittedTagIds.includes(mt.tagId)
-    )
-
-    if (missingMandatoryTags.length > 0) {
-      const missingTagNames = missingMandatoryTags.map(mt => mt.tag.tagName).join(', ')
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Mandatory tags must be completed: ${missingTagNames}`,
-          missingMandatoryTags: missingMandatoryTags.map(mt => ({
-            id: mt.tagId,
-            name: mt.tag.tagName,
-          })),
-        },
-        { status: 400 }
-      )
-    }
+    // Note: Mandatory tag validation is handled on the frontend with a confirmation dialog
+    // Users can choose to submit without filling all mandatory tags
 
     // Filter tags with count > 0
     const validTags = tags.filter((t: any) => t.count && parseInt(t.count) > 0)
