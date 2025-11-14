@@ -593,10 +593,18 @@ export default function SubmitTagsPage() {
             <AlertDialogDescription asChild>
               <div>
                 <p>You haven't filled in the following mandatory task(s):</p>
-                <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                  <p className="font-medium text-yellow-900">{missingMandatoryNames}</p>
+                <div className="mt-2 p-3 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
+                  <p className="font-medium text-yellow-900 dark:text-yellow-100">{missingMandatoryNames}</p>
                 </div>
-                <p className="mt-3">Do you still want to continue and submit without these tasks?</p>
+                <div className="mt-3 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-md">
+                  <p className="text-sm font-semibold text-red-900 dark:text-red-100 flex items-center gap-2">
+                    <span className="text-lg">⚠️</span> Warning Notice
+                  </p>
+                  <p className="text-sm text-red-800 dark:text-red-200 mt-2">
+                    If you submit without completing these mandatory tasks, <strong>you will automatically receive a warning</strong>. This warning will be visible in your "My Warnings & Penalties" section.
+                  </p>
+                </div>
+                <p className="mt-3 font-medium">Do you still want to continue and submit?</p>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>

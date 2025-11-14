@@ -63,6 +63,22 @@ export async function POST(request: NextRequest) {
     // Note: Mandatory tag validation is handled on the frontend with a confirmation dialog
     // Users can choose to submit without filling all mandatory tags
 
+    // Check for missing mandatory tags
+    const assignments = await prisma.assignment.findMany({
+      where: {
+        employeeId: parseInt(employeeId),
+        isMandatory: true,
+      },
+      include: {
+        tag: true,
+      },
+    })
+
+    const submittedTagIds = tags.map((t: any) => parseInt(t.tagId)).filter((id: number) => !isNaN(id))
+    const missingMandatoryTags = assignments.filter(
+      (assignment) => !submittedTagIds.includes(assignment.tagId)
+    )
+
     // Filter tags with count > 0
     const validTags = tags.filter((t: any) => t.count && parseInt(t.count) > 0)
 
@@ -152,12 +168,33 @@ export async function POST(request: NextRequest) {
       console.error('Error awarding tag submission points:', err)
     )
 
+    // Create automatic warning if mandatory tags were missing
+    if (missingMandatoryTags.length > 0) {
+      const missingTagNames = missingMandatoryTags.map((a) => a.tag.tagName).join(', ')
+      
+      // Create warning asynchronously (don't block response)
+      prisma.warning.create({
+        data: {
+          employeeId: parseInt(employeeId),
+          warningType: 'WORK_QUALITY',
+          warningDate: new Date(),
+          warningMessage: `Incomplete work submission: Did not complete mandatory task(s) - ${missingTagNames}`,
+          severity: 'MEDIUM',
+          issuedBy: null, // System-generated
+          relatedDate: selectedDate,
+        },
+      }).catch((err: any) => {
+        console.error('Error creating automatic warning:', err)
+      })
+    }
+
     return NextResponse.json({
       success: true,
       data: result.logs,
       submissionStatus: result.submissionStatus,
       message: `Successfully submitted ${validTags.length} task(s) for ${selectedDate.toLocaleDateString()}`,
       totalMinutes,
+      warningIssued: missingMandatoryTags.length > 0,
     })
   } catch (error: any) {
     console.error('Error submitting logs:', error)
