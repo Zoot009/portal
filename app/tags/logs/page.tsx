@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Calendar, Download, Search, TrendingUp, Loader2, Trash2, AlertTriangle } from 'lucide-react'
+import { Calendar, Download, Search, TrendingUp, Loader2, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -46,9 +46,7 @@ export default function WorkLogsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [dateFilter, setDateFilter] = useState('')
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
   const [selectedLogId, setSelectedLogId] = useState<number | null>(null)
-  const [selectedBulkDelete, setSelectedBulkDelete] = useState<{ employeeId: number; date: string; employeeName: string } | null>(null)
   
   const queryClient = useQueryClient()
 
@@ -87,51 +85,11 @@ export default function WorkLogsPage() {
     }
   })
 
-  // Bulk delete by employee and date mutation
-  const bulkDeleteMutation = useMutation({
-    mutationFn: async ({ employeeId, date }: { employeeId: number; date: string }) => {
-      const response = await fetch(`/api/logs/bulk-delete`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employeeId, logDate: date }),
-      })
-      if (!response.ok) throw new Error('Failed to bulk delete logs')
-      return response.json()
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['work-logs'] })
-      toast.success(`Successfully deleted ${data.deletedCount} log(s)`)
-      setBulkDeleteDialogOpen(false)
-      setSelectedBulkDelete(null)
-    },
-    onError: () => {
-      toast.error('Failed to delete logs')
-    }
-  })
-
   const filteredLogs = logs.filter((log: WorkLog) => {
     const matchesSearch = log.employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          log.employee.employeeCode.toLowerCase().includes(searchTerm.toLowerCase())
     return matchesSearch
   })
-
-  // Group logs by employee and date for bulk actions
-  const groupedLogs = filteredLogs.reduce((acc: any, log: WorkLog) => {
-    const dateStr = log.logDate.split('T')[0]
-    const key = `${log.employeeId}-${dateStr}`
-    if (!acc[key]) {
-      acc[key] = {
-        employeeId: log.employeeId,
-        employeeName: log.employee.name,
-        date: dateStr,
-        count: 0,
-        logs: []
-      }
-    }
-    acc[key].count++
-    acc[key].logs.push(log)
-    return acc
-  }, {})
 
   const totalMinutes = filteredLogs.reduce((sum: number, log: WorkLog) => sum + log.totalMinutes, 0)
   const totalHours = (totalMinutes / 60).toFixed(2)
@@ -212,51 +170,6 @@ export default function WorkLogsPage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Bulk Delete Options */}
-      {Object.keys(groupedLogs).length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Bulk Delete by Date</CardTitle>
-            <CardDescription>
-              Delete all logs for a specific employee on a specific date
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {Object.values(groupedLogs).map((group: any) => {
-                const [year, month, day] = group.date.split('-')
-                const formattedDate = `${month}/${day}/${year}`
-                return (
-                  <div key={`${group.employeeId}-${group.date}`} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium">{group.employeeName}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {formattedDate} • {group.count} {group.count === 1 ? 'entry' : 'entries'}
-                      </p>
-                    </div>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedBulkDelete({ 
-                          employeeId: group.employeeId, 
-                          date: group.date,
-                          employeeName: group.employeeName 
-                        })
-                        setBulkDeleteDialogOpen(true)
-                      }}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete All
-                    </Button>
-                  </div>
-                )
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Logs Table */}
       <Card>
@@ -371,45 +284,6 @@ export default function WorkLogsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Bulk Delete Dialog */}
-      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
-              Bulk Delete Confirmation
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {selectedBulkDelete && (
-                <>
-                  Are you sure you want to delete <strong>all logs</strong> for{' '}
-                  <strong>{selectedBulkDelete.employeeName}</strong> on{' '}
-                  <strong>
-                    {(() => {
-                      const [year, month, day] = selectedBulkDelete.date.split('-')
-                      return `${month}/${day}/${year}`
-                    })()}
-                  </strong>?
-                  <br /><br />
-                  This will delete all log entries for this employee on this date. This action cannot be undone.
-                </>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => selectedBulkDelete && bulkDeleteMutation.mutate({ 
-                employeeId: selectedBulkDelete.employeeId, 
-                date: selectedBulkDelete.date 
-              })}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete All
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }

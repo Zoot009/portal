@@ -42,8 +42,6 @@ export default function EmployeesPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [isExtractDialogOpen, setIsExtractDialogOpen] = useState(false)
   const [extracting, setExtracting] = useState(false)
-  const [isDeleteTestUsersDialogOpen, setIsDeleteTestUsersDialogOpen] = useState(false)
-  const [deletingTestUsers, setDeletingTestUsers] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [recordsPerPage, setRecordsPerPage] = useState(10)
   
@@ -212,33 +210,6 @@ export default function EmployeesPage() {
     }
   }
 
-  // Handle delete test users
-  const handleDeleteTestUsers = async () => {
-    setDeletingTestUsers(true)
-    try {
-      const response = await fetch('/api/employees/delete-test-users', {
-        method: 'DELETE'
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to delete test users')
-      }
-
-      toast.success(result.message || `Successfully deleted ${result.deletedCount} test user(s)`)
-      setIsDeleteTestUsersDialogOpen(false)
-      
-      // Refresh the employees list
-      refetch()
-      
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to delete test users')
-    } finally {
-      setDeletingTestUsers(false)
-    }
-  }
-
   // Handle edit employee
   const handleEditEmployee = (employee: Employee) => {
     setEditingEmployee(employee)
@@ -302,39 +273,6 @@ export default function EmployeesPage() {
           </p>
         </div>
         <div className="flex space-x-2">
-          <Dialog open={isDeleteTestUsersDialogOpen} onOpenChange={setIsDeleteTestUsersDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="destructive">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete Test Users
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Delete Test Users</DialogTitle>
-                <DialogDescription>
-                  This will permanently delete all test users (Test Employee, Jane Smith, Admin User) and their related data including attendance records, leave requests, warnings, penalties, and assignments. This action cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setIsDeleteTestUsersDialogOpen(false)}
-                  disabled={deletingTestUsers}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  variant="destructive"
-                  onClick={handleDeleteTestUsers}
-                  disabled={deletingTestUsers}
-                >
-                  {deletingTestUsers ? 'Deleting...' : 'Delete Test Users'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
           <Dialog open={isExtractDialogOpen} onOpenChange={setIsExtractDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline">

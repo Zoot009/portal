@@ -55,10 +55,6 @@ export default function AttendanceRecordsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [recordsPerPage, setRecordsPerPage] = useState(10)
   
-  // Delete all dialog state
-  const [isDeleteAllDialogOpen, setIsDeleteAllDialogOpen] = useState(false)
-  const [deletingAll, setDeletingAll] = useState(false)
-  
   // Edit dialog state
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null)
@@ -239,36 +235,6 @@ export default function AttendanceRecordsPage() {
     }
   }
 
-  // Handle delete all records
-  const handleDeleteAllRecords = async () => {
-    setDeletingAll(true)
-    try {
-      const response = await fetch('/api/attendance/delete-all', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (!response.ok) {
-        const result = await response.json()
-        throw new Error(result.error || 'Failed to delete records')
-      }
-
-      const result = await response.json()
-      toast.success(result.message || 'All attendance records deleted successfully')
-      setIsDeleteAllDialogOpen(false)
-      
-      // Refresh the records
-      refetch()
-      
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to delete records')
-    } finally {
-      setDeletingAll(false)
-    }
-  }
-
   // Filter records
   const filteredRecords = records.filter((record: AttendanceRecord) => {
     const matchesSearch = !employeeSearch || 
@@ -276,6 +242,27 @@ export default function AttendanceRecordsPage() {
       record.employeeCode?.toLowerCase().includes(employeeSearch.toLowerCase())
     
     const matchesStatus = statusFilter === 'all' || record.status === statusFilter
+    
+    // Salary cycle filter
+    let matchesSalaryCycle = true
+    if (salaryCycleFilter !== 'all') {
+      const recordDate = new Date(record.date)
+      const today = new Date()
+      
+      if (salaryCycleFilter === 'current') {
+        // Current cycle: 6 Nov to 5 Dec
+        const cycleStart = new Date(2025, 10, 6) // Nov 6, 2025 (month is 0-indexed)
+        const cycleEnd = new Date(2025, 11, 5) // Dec 5, 2025
+        cycleEnd.setHours(23, 59, 59, 999)
+        matchesSalaryCycle = recordDate >= cycleStart && recordDate <= cycleEnd
+      } else if (salaryCycleFilter === 'previous') {
+        // Previous cycle: 6 Oct to 5 Nov
+        const cycleStart = new Date(2025, 9, 6) // Oct 6, 2025
+        const cycleEnd = new Date(2025, 10, 5) // Nov 5, 2025
+        cycleEnd.setHours(23, 59, 59, 999)
+        matchesSalaryCycle = recordDate >= cycleStart && recordDate <= cycleEnd
+      }
+    }
     
     // Quick filter for date ranges
     let matchesQuickFilter = true
@@ -322,7 +309,7 @@ export default function AttendanceRecordsPage() {
       matchesDateFilter = recordDate.getTime() === filterDate.getTime()
     }
     
-    return matchesSearch && matchesStatus && matchesQuickFilter && matchesDateFilter
+    return matchesSearch && matchesStatus && matchesSalaryCycle && matchesQuickFilter && matchesDateFilter
   })
 
   // Pagination logic
@@ -470,41 +457,6 @@ export default function AttendanceRecordsPage() {
               Edited Records
             </Button>
           </Link>
-          
-          <Dialog open={isDeleteAllDialogOpen} onOpenChange={setIsDeleteAllDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="destructive">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete All Records
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Delete All Attendance Records</DialogTitle>
-                <DialogDescription>
-                  This will permanently delete ALL attendance records from the database. This action cannot be undone.
-                  <br /><br />
-                  <strong>⚠️ Warning: This is intended for testing purposes only!</strong>
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setIsDeleteAllDialogOpen(false)}
-                  disabled={deletingAll}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  variant="destructive" 
-                  onClick={handleDeleteAllRecords}
-                  disabled={deletingAll}
-                >
-                  {deletingAll ? 'Deleting...' : 'Delete All Records'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
           
           <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
             <DialogTrigger asChild>
@@ -873,11 +825,11 @@ export default function AttendanceRecordsPage() {
                 setCurrentPage(1)
               }}>
                 <SelectTrigger className="w-52 h-10 border-gray-300">
-                  <SelectValue placeholder="Current Cycle (6 Oct - 5 Nov)" />
+                  <SelectValue placeholder="Current Cycle (6 Nov - 5 Dec)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="current">Current Cycle (6 Oct - 5 Nov)</SelectItem>
-                  <SelectItem value="previous">Previous Cycle (6 Sep - 5 Oct)</SelectItem>
+                  <SelectItem value="current">Current Cycle (6 Nov - 5 Dec)</SelectItem>
+                  <SelectItem value="previous">Previous Cycle (6 Oct - 5 Nov)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -965,6 +917,7 @@ export default function AttendanceRecordsPage() {
               <TableRow className="border-b">
                 <TableHead className="text-left font-medium">Name</TableHead>
                 <TableHead className="text-left font-medium">Code</TableHead>
+                <TableHead className="text-center font-medium">Date</TableHead>
                 <TableHead className="text-left font-medium">Status</TableHead>
                 <TableHead className="text-center font-medium">Check In</TableHead>
                 <TableHead className="text-center font-medium">Break In</TableHead>
@@ -991,6 +944,17 @@ export default function AttendanceRecordsPage() {
                   </TableCell>
                   <TableCell className="font-mono text-sm text-gray-600">
                     {record.employeeCode}
+                  </TableCell>
+                  <TableCell className="text-center text-sm">
+                    {(() => {
+                      try {
+                        const dateStr = record.date.split('T')[0]
+                        const [year, month, day] = dateStr.split('-')
+                        return `${month}/${day}/${year}`
+                      } catch {
+                        return 'Invalid Date'
+                      }
+                    })()}
                   </TableCell>
                   <TableCell>
                     <Badge className={statusColors[record.status] || 'bg-gray-100 text-gray-800'}>

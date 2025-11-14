@@ -89,10 +89,10 @@ export default function TagHistoryPage() {
   })
 
   // Group logs by date
-  const groupedLogs: GroupedLog[] = useMemo(() => {
+  const groupedLogs: (GroupedLog & { submittedAt: string })[] = useMemo(() => {
     if (!logsData?.data) return []
 
-    const grouped = logsData.data.reduce((acc: { [key: string]: GroupedLog }, log: LogEntry) => {
+    const grouped = logsData.data.reduce((acc: { [key: string]: GroupedLog & { submittedAt: string } }, log: LogEntry) => {
       const date = new Date(log.logDate).toISOString().split('T')[0]
       
       if (!acc[date]) {
@@ -101,7 +101,8 @@ export default function TagHistoryPage() {
           logs: [],
           totalCount: 0,
           totalMinutes: 0,
-          status: 'APPROVED' // Default status, you can add logic to determine this
+          status: 'APPROVED', // Default status, you can add logic to determine this
+          submittedAt: log.submittedAt // Store the submission time
         }
       }
       
@@ -112,7 +113,7 @@ export default function TagHistoryPage() {
       return acc
     }, {})
 
-    const result = Object.values(grouped) as GroupedLog[]
+    const result = Object.values(grouped) as (GroupedLog & { submittedAt: string })[]
     return result.sort((a, b) => 
       new Date(b.date).getTime() - new Date(a.date).getTime()
     )
@@ -343,7 +344,7 @@ export default function TagHistoryPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {filteredHistory.map((entry: GroupedLog) => (
+                {filteredHistory.map((entry: GroupedLog & { submittedAt: string }) => (
                   <div
                     key={entry.date}
                     className="border rounded-lg overflow-hidden hover:shadow-md transition-all"
@@ -371,6 +372,16 @@ export default function TagHistoryPage() {
                             <span className="flex items-center gap-1">
                               <Clock className="h-3 w-3" />
                               {Math.floor(entry.totalMinutes / 60)}h {entry.totalMinutes % 60}m
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              {new Date(entry.submittedAt).toLocaleTimeString('en-US', { 
+                                hour: '2-digit', 
+                                minute: '2-digit',
+                                hour12: true 
+                              })}
                             </span>
                           </div>
                         </div>

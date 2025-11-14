@@ -590,12 +590,14 @@ export default function SubmitTagsPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Missing Mandatory Tasks</AlertDialogTitle>
-            <AlertDialogDescription>
-              You haven't filled in the following mandatory task(s):
-              <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                <p className="font-medium text-yellow-900">{missingMandatoryNames}</p>
+            <AlertDialogDescription asChild>
+              <div>
+                <p>You haven't filled in the following mandatory task(s):</p>
+                <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                  <p className="font-medium text-yellow-900">{missingMandatoryNames}</p>
+                </div>
+                <p className="mt-3">Do you still want to continue and submit without these tasks?</p>
               </div>
-              <p className="mt-3">Do you still want to continue and submit without these tasks?</p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
