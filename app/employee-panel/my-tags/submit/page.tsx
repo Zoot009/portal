@@ -10,6 +10,16 @@ import { toast } from "sonner"
 import { useUser } from "@clerk/nextjs"
 import { useQuery } from "@tanstack/react-query"
 import { Badge } from "@/components/ui/badge"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface TagEntry {
   id: number
@@ -38,6 +48,8 @@ export default function SubmitTagsPage() {
   const [tagEntries, setTagEntries] = useState<TagEntry[]>([
     { id: 1, tagId: "", tagName: "", count: "", minutes: "" }
   ])
+  const [showMandatoryDialog, setShowMandatoryDialog] = useState(false)
+  const [missingMandatoryNames, setMissingMandatoryNames] = useState<string>('')
   
 
 
@@ -194,39 +206,41 @@ export default function SubmitTagsPage() {
       return
     }
 
+    // Check mandatory tags
+    const mandatoryTags = assignedTags.filter(a => a.isMandatory)
+    const submittedTagIds = tagEntries
+      .filter(e => e.count && parseInt(e.count) > 0)
+      .map(e => parseInt(e.tagId))
+    
+    const missingMandatory = mandatoryTags.filter(mt => !submittedTagIds.includes(mt.tagId))
+    
+    if (missingMandatory.length > 0) {
+      const missingNames = missingMandatory.map(mt => mt.tag.tagName).join(', ')
+      setMissingMandatoryNames(missingNames)
+      setShowMandatoryDialog(true)
+      return
+    }
+
+    await submitTags()
+  }
+
+  const submitTags = async () => {
     setIsSubmitting(true)
     
     try {
-      // Get all submitted tags
-      const submittedTags = tagEntries
-        .filter(e => e.count && parseInt(e.count) > 0)
-        .map(e => ({
-          tagId: e.tagId,
-          count: e.count,
-          minutes: e.minutes,
-        }))
-
-      // Add mandatory tags with count 0 if not submitted
-      const submittedTagIds = submittedTags.map(t => parseInt(t.tagId))
-      const mandatoryTags = assignedTags.filter(a => a.isMandatory)
-      
-      mandatoryTags.forEach(mt => {
-        if (!submittedTagIds.includes(mt.tagId)) {
-          submittedTags.push({
-            tagId: mt.tagId.toString(),
-            count: "0",
-            minutes: "0",
-          })
-        }
-      })
-
       const response = await fetch('/api/logs/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           employeeId: employeeData?.data?.id,
           date: date,
-          tags: submittedTags,
+          tags: tagEntries
+            .filter(e => e.count && parseInt(e.count) > 0)
+            .map(e => ({
+              tagId: e.tagId,
+              count: e.count,
+              minutes: e.minutes,
+            })),
         }),
       })
 
@@ -247,6 +261,11 @@ export default function SubmitTagsPage() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const handleConfirmSubmit = async () => {
+    setShowMandatoryDialog(false)
+    await submitTags()
   }
 
   const totalCount = tagEntries.reduce((sum, entry) => sum + (parseInt(entry.count) || 0), 0)
@@ -565,6 +584,28 @@ export default function SubmitTagsPage() {
           </CardContent>
         </Card>
       </form>
+
+      {/* Mandatory Tag Confirmation Dialog */}
+      <AlertDialog open={showMandatoryDialog} onOpenChange={setShowMandatoryDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Missing Mandatory Tasks</AlertDialogTitle>
+            <AlertDialogDescription>
+              You haven't filled in the following mandatory task(s):
+              <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                <p className="font-medium text-yellow-900">{missingMandatoryNames}</p>
+              </div>
+              <p className="mt-3">Do you still want to continue and submit without these tasks?</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmSubmit}>
+              Yes, Submit Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
