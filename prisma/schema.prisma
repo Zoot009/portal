@@ -387,6 +387,27 @@ model Penalty {
   @@map("penalties")
 }
 
+model PenaltySettings {
+  id                      Int      @id @default(autoincrement())
+  warningThreshold        Int      @default(3) @map("warning_threshold")
+  penaltyAmount           Float    @default(500) @map("penalty_amount")
+  cycleLengthDays         Int      @default(30) @map("cycle_length_days")
+  cycleStartDay           Int      @default(6) @map("cycle_start_day") // 6th of month
+  salaryDayStart          Int      @default(6) @map("salary_day_start") // Existing: salary cycle start day
+  autoGeneratePenalties   Boolean  @default(true) @map("auto_generate_penalties")
+  autoCreate              Boolean  @default(true) @map("auto_create") // Existing: auto create penalties
+  notifyEmployees         Boolean  @default(true) @map("notify_employees")
+  notifyAdmins            Boolean  @default(true) @map("notify_admins")
+  penaltyType             String   @default("MANDATORY_TAG_VIOLATION") @map("penalty_type") // Existing: type of penalty
+  warningMessageTemplate  String?  @map("warning_message_template") // Existing: warning message template
+  penaltyMessageTemplate  String?  @map("penalty_message_template") // Existing: penalty message template
+  isActive                Boolean  @default(true) @map("is_active")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  @@map("penalty_settings")
+}
+
 // ============================================================================
 // NOTIFICATION MODEL
 // ============================================================================
