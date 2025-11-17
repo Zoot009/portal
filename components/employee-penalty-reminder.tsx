@@ -218,7 +218,7 @@ export function EmployeePenaltyReminder() {
               {unviewedData.penaltyCount > 0 ? 'New Penalty Alert' : 'New Warning Alert'}
             </AlertDialogTitle>
           </div>
-          <AlertDialogDescription className="text-base">
+          <AlertDialogDescription className="text-base text-muted-foreground">
             {getMessage()}
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -228,7 +228,7 @@ export function EmployeePenaltyReminder() {
           </AlertDialogCancel>
           <AlertDialogAction 
             onClick={handleViewNow}
-            className="bg-blue-600 hover:bg-blue-700 sm:flex-1"
+            className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 sm:flex-1"
           >
             Take me there
           </AlertDialogAction>

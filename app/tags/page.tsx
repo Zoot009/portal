@@ -112,13 +112,13 @@ export default function TagsPage() {
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           {[1, 2].map(i => (
-            <div key={i} className="bg-white p-4 rounded-lg border">
+            <div key={i} className="bg-card p-4 rounded-lg border">
               <div className="h-4 bg-muted animate-pulse rounded mb-2" />
               <div className="h-8 bg-muted animate-pulse rounded" />
             </div>
           ))}
         </div>
-        <div className="bg-white rounded-lg border p-8 text-center">
+        <div className="bg-card rounded-lg border p-8 text-center">
           <div className="text-muted-foreground">Loading tags...</div>
         </div>
       </div>
@@ -145,7 +145,7 @@ export default function TagsPage() {
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-3">
-        <div className="bg-white p-4 rounded-lg border">
+        <div className="bg-card p-4 rounded-lg border">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Total Tags</p>
@@ -154,22 +154,22 @@ export default function TagsPage() {
             <Tag className="h-8 w-8 text-blue-500" />
           </div>
         </div>
-        <div className="bg-white p-4 rounded-lg border">
+        <div className="bg-card p-4 rounded-lg border">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Total Assignments</p>
-              <p className="text-2xl font-bold text-purple-600">
+              <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                 {totalAssignments}
               </p>
             </div>
             <UserCheck className="h-8 w-8 text-purple-500" />
           </div>
         </div>
-        <div className="bg-white p-4 rounded-lg border">
+        <div className="bg-card p-4 rounded-lg border">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Total Work Logs</p>
-              <p className="text-2xl font-bold text-green-600">
+              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                 {totalWorkLogs}
               </p>
             </div>
@@ -179,7 +179,7 @@ export default function TagsPage() {
       </div>
 
       {/* Search */}
-      <div className="flex items-center space-x-2 bg-white p-4 rounded-lg border">
+      <div className="flex items-center space-x-2 bg-card p-4 rounded-lg border">
         <Search className="h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Search tags..."
@@ -190,7 +190,7 @@ export default function TagsPage() {
       </div>
 
       {/* Tags Table */}
-      <div className="bg-white rounded-lg border shadow-sm">
+      <div className="bg-card rounded-lg border shadow-sm">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
@@ -218,11 +218,11 @@ export default function TagsPage() {
               </TableRow>
             ) : (
               paginatedTags.map((tag: TagData) => (
-                <TableRow key={tag.id} className="hover:bg-muted/30 transition-colors">
+                <TableRow key={tag.id} className="hover:bg-muted/50 transition-colors">
                   <TableCell className="font-medium w-[35%]">{tag.tagName}</TableCell>
                   <TableCell className="w-[25%]">
                     <div>
-                      <p className="font-medium text-blue-600">
+                      <p className="font-medium text-blue-600 dark:text-blue-400">
                         {formatTime(tag.timeMinutes)}
                       </p>
                       <p className="text-xs text-muted-foreground">
@@ -266,7 +266,7 @@ export default function TagsPage() {
 
         {/* Pagination */}
         {filteredTags.length > 0 && (
-          <div className="flex items-center justify-between px-6 py-4 border-t bg-muted/30">
+          <div className="flex items-center justify-between px-6 py-4 border-t bg-muted/50">
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Show</span>
               <Select value={itemsPerPage.toString()} onValueChange={(value) => {

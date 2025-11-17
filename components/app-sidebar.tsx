@@ -198,6 +198,10 @@ const data = {
       icon: Shield,
       items: [
         {
+          title: "Penalty Management",
+          url: "/admin/penalty-management",
+        },
+        {
           title: "Account Link Status",
           url: "/admin/link-accounts",
         },
@@ -276,10 +280,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <a href="/" className="flex items-center gap-2 py-2">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg border border-gray-200 bg-white">
-                  <Building2 className="text-gray-900" size={18} strokeWidth={1.5} />
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg border bg-card">
+                  <Building2 className="text-foreground" size={18} strokeWidth={1.5} />
                 </div>
-                <span className="text-base font-semibold text-gray-900">
+                <span className="text-base font-semibold text-foreground">
                   Employee Portal
                 </span>
               </a>

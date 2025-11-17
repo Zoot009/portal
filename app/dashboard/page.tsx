@@ -211,7 +211,7 @@ export default function DashboardPage() {
               stats.work.recentLogs.slice(0, 5).map((log: any) => (
                 <div key={log.id} className="flex items-center space-x-4">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                    <p className="text-sm font-medium text-gray-900 truncate dark:text-gray-100">
                       {log.employee?.name || 'Employee'} worked on {log.tag?.tagName || log.tag?.name || 'General Work'}
                     </p>
                     <div className="flex items-center gap-2 mt-1">

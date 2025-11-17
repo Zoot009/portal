@@ -441,10 +441,10 @@ export default function FlowacePage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Avg Productivity</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
+            <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
               {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : `${filteredStats.avgProductivity?.toFixed(1) || 0}%`}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -456,10 +456,10 @@ export default function FlowacePage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Hours</CardTitle>
-            <Clock className="h-4 w-4 text-blue-600" />
+            <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
+            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
               {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : formatHours(filteredStats.totalHours || 0)}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -471,10 +471,10 @@ export default function FlowacePage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Avg Activity %</CardTitle>
-            <Target className="h-4 w-4 text-purple-600" />
+            <Target className="h-4 w-4 text-purple-600 dark:text-purple-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600">
+            <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
               {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : `${filteredStats.avgActivity?.toFixed(1) || 0}%`}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -485,7 +485,7 @@ export default function FlowacePage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white p-6 rounded-lg border space-y-4">
+      <div className="bg-card p-6 rounded-lg border space-y-4">
         <h3 className="font-semibold text-lg">Filter & Search</h3>
         
         <div className="flex flex-col md:flex-row gap-4">
@@ -618,9 +618,9 @@ export default function FlowacePage() {
                     </TableCell>
                   </TableRow>
                 ) : filteredRecords.length === 0 ? (
-                  <TableRow className="hover:bg-gray-50/50">
+                  <TableRow className="hover:bg-muted/50">
                     <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                      <TrendingUp className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                      <TrendingUp className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
                       <p className="text-lg font-medium">No records found</p>
                       <p className="text-sm mt-2">
                         {records.length === 0 
@@ -632,7 +632,7 @@ export default function FlowacePage() {
                   </TableRow>
                 ) : (
                   filteredRecords.map((record) => (
-                      <TableRow key={record.id} className="hover:bg-gray-50/50">
+                      <TableRow key={record.id} className="hover:bg-muted/50">
                         <TableCell className="text-left">
                           <div className="flex flex-col">
                             <span className="font-medium">{record.employeeName}</span>

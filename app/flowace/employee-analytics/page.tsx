@@ -102,10 +102,10 @@ export default function FlowaceEmployeeAnalyticsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Avg Productivity</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
+            <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.avgProductivity.toFixed(1)}%</div>
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.avgProductivity.toFixed(1)}%</div>
             <p className="text-xs text-muted-foreground">
               Overall rate
             </p>
@@ -115,10 +115,10 @@ export default function FlowaceEmployeeAnalyticsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Hours</CardTitle>
-            <Clock className="h-4 w-4 text-blue-600" />
+            <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.totalHours.toFixed(1)}h</div>
+            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.totalHours.toFixed(1)}h</div>
             <p className="text-xs text-muted-foreground">
               Tracked hours
             </p>
@@ -128,10 +128,10 @@ export default function FlowaceEmployeeAnalyticsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Avg Activity</CardTitle>
-            <Target className="h-4 w-4 text-purple-600" />
+            <Target className="h-4 w-4 text-purple-600 dark:text-purple-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600">
+            <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
               {records.length > 0 
                 ? (records.reduce((acc, r) => acc + (r.activityPercentage || 0), 0) / records.length).toFixed(1)
                 : '0.0'}%
@@ -143,9 +143,9 @@ export default function FlowaceEmployeeAnalyticsPage() {
         </Card>
       </div>
       {/* Filters */}
-      <div className="bg-white rounded-lg border shadow-sm">
-        <div className="px-6 py-4 border-b border-gray-100">
-          <h3 className="text-base font-medium text-gray-900">Filter & Search</h3>
+      <div className="bg-card rounded-lg border shadow-sm">
+        <div className="px-6 py-4 border-b">
+          <h3 className="text-base font-medium">Filter & Search</h3>
         </div>
         
         <div className="p-6">
@@ -162,10 +162,10 @@ export default function FlowaceEmployeeAnalyticsPage() {
             </Select>
 
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search by employee name or code..."
-                className="pl-10 h-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                className="pl-10 h-10"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -246,16 +246,16 @@ export default function FlowaceEmployeeAnalyticsPage() {
                     </TableCell>
                   </TableRow>
                 ) : filteredRecords.length === 0 ? (
-                  <TableRow className="hover:bg-gray-50/50">
+                  <TableRow className="hover:bg-muted/50">
                     <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
-                      <TrendingUp className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                      <TrendingUp className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
                       <p className="text-lg font-medium">No analytics data available</p>
                       <p className="text-sm mt-2">Upload Flowace CSV files to generate employee analytics</p>
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredRecords.map((record, index) => (
-                    <TableRow key={record.id || index} className="hover:bg-gray-50/50 transition-colors">
+                    <TableRow key={record.id || index} className="hover:bg-muted/50 transition-colors">
                       <TableCell className="font-medium">{record.employee?.name || record.employeeName}</TableCell>
                       <TableCell className="text-center">{record.loggedHours.toFixed(2)}</TableCell>
                       <TableCell className="text-center">{record.activeHours.toFixed(2)}</TableCell>

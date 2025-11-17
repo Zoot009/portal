@@ -86,7 +86,7 @@ export function PenaltyReminderDialog({
               Update Penalties
             </AlertDialogTitle>
           </div>
-          <AlertDialogDescription className="text-base">
+          <AlertDialogDescription className="text-base text-muted-foreground">
             As an admin, it's important to review and update employee penalties regularly. 
             Would you like to go to the penalties page now to check for any pending updates?
           </AlertDialogDescription>

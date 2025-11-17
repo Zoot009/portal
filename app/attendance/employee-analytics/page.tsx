@@ -163,10 +163,10 @@ export default function EmployeeAnalyticsPage() {
   const totalHoursWorked = analytics.reduce((sum, emp) => sum + emp.totalHours, 0)
 
   const getAttendanceRateColor = (rate: number) => {
-    if (rate >= 95) return 'bg-green-100 text-green-800'
-    if (rate >= 85) return 'bg-blue-100 text-blue-800'
-    if (rate >= 75) return 'bg-yellow-100 text-yellow-800'
-    return 'bg-red-100 text-red-800'
+    if (rate >= 95) return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+    if (rate >= 85) return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+    if (rate >= 75) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+    return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
   }
 
   return (
@@ -180,9 +180,9 @@ export default function EmployeeAnalyticsPage() {
       </div>
 
       {/* Filter & Search */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm mb-6">
-        <div className="px-6 py-4 border-b border-gray-100">
-          <h3 className="text-base font-medium text-gray-900">Filter & Search</h3>
+      <div className="bg-card rounded-lg border shadow-sm mb-6">
+        <div className="px-6 py-4 border-b">
+          <h3 className="text-base font-medium">Filter & Search</h3>
         </div>
         
         <div className="p-6">
@@ -190,7 +190,7 @@ export default function EmployeeAnalyticsPage() {
           <div className="flex items-center gap-4 mb-6">
             <div className="flex-1 min-w-0">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search by employee name, code..."
                   value={employeeSearch}
@@ -198,7 +198,7 @@ export default function EmployeeAnalyticsPage() {
                     setEmployeeSearch(e.target.value)
                     setCurrentPage(1)
                   }}
-                  className="pl-10 h-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  className="pl-10 h-10"
                 />
               </div>
             </div>
@@ -208,7 +208,7 @@ export default function EmployeeAnalyticsPage() {
                 setSalaryCycleFilter(value)
                 setCurrentPage(1)
               }}>
-                <SelectTrigger className="w-52 h-10 border-gray-300">
+                <SelectTrigger className="w-52 h-10">
                   <SelectValue placeholder="Current Cycle (6 Oct - 5 Nov)" />
                 </SelectTrigger>
                 <SelectContent>
@@ -245,26 +245,26 @@ export default function EmployeeAnalyticsPage() {
               </TableHeader>
               <TableBody>
               {paginatedAnalytics.map((employee) => (
-                <TableRow key={employee.employeeId} className="hover:bg-gray-50/50 transition-colors">
+                <TableRow key={employee.employeeId} className="hover:bg-muted/50 transition-colors">
                   <TableCell className="pl-6">
                     <div className="flex items-center space-x-3">
                       <Avatar className="h-9 w-9">
-                        <AvatarFallback className="bg-gray-600 text-white text-sm font-semibold">
+                        <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
                           {employee.employeeName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <div className="font-medium text-gray-900">{employee.employeeName}</div>
+                        <div className="font-medium">{employee.employeeName}</div>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="font-mono text-sm text-gray-600">
+                  <TableCell className="font-mono text-sm text-muted-foreground">
                     {employee.employeeCode}
                   </TableCell>
                   <TableCell className="text-center font-mono text-sm">
                     <div className="flex items-center justify-center gap-1">
-                      <span className="font-semibold text-green-600">{employee.presentDays}</span>
-                      <span className="text-gray-400">/</span>
+                      <span className="font-semibold text-green-600 dark:text-green-400">{employee.presentDays}</span>
+                      <span className="text-muted-foreground">/</span>
                       <span>{employee.totalRecords}</span>
                     </div>
                   </TableCell>
@@ -284,7 +284,7 @@ export default function EmployeeAnalyticsPage() {
 
       {/* Pagination */}
       {totalAnalytics > 0 && (
-        <div className="flex items-center justify-between bg-white border rounded-lg px-6 py-4 mt-6">
+        <div className="flex items-center justify-between bg-card border rounded-lg px-6 py-4 mt-6">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Show</span>
@@ -303,7 +303,7 @@ export default function EmployeeAnalyticsPage() {
               <span className="text-sm text-muted-foreground">entries</span>
             </div>
             <div className="text-sm text-muted-foreground">
-              Showing <span className="font-medium text-gray-900">{startIndex + 1}</span> to <span className="font-medium text-gray-900">{Math.min(endIndex, totalAnalytics)}</span> of <span className="font-medium text-gray-900">{totalAnalytics}</span> entries
+              Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{Math.min(endIndex, totalAnalytics)}</span> of <span className="font-medium">{totalAnalytics}</span> entries
             </div>
           </div>
 

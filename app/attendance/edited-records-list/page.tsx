@@ -43,12 +43,12 @@ interface AttendanceRecord {
 }
 
 const statusColors: Record<string, string> = {
-  'PRESENT': 'bg-green-100 text-green-800',
-  'ABSENT': 'bg-red-100 text-red-800',
-  'LATE': 'bg-yellow-100 text-yellow-800',
-  'HALF_DAY': 'bg-blue-100 text-blue-800',
-  'LEAVE_APPROVED': 'bg-purple-100 text-purple-800',
-  'WFH_APPROVED': 'bg-indigo-100 text-indigo-800'
+  'PRESENT': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  'ABSENT': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  'LATE': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+  'HALF_DAY': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  'LEAVE_APPROVED': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+  'WFH_APPROVED': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200'
 }
 
 export default function EditedRecordsListPage() {
@@ -197,20 +197,20 @@ export default function EditedRecordsListPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Edited</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Edited</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{filteredRecords.length}</div>
+            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{filteredRecords.length}</div>
             <p className="text-xs text-muted-foreground">Records modified</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Today's Edits</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Today's Edits</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
               {filteredRecords.filter((r: AttendanceRecord) => {
                 const today = new Date().toISOString().split('T')[0]
                 return r.updatedAt?.startsWith(today)
@@ -222,10 +222,10 @@ export default function EditedRecordsListPage() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Present Status</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Present Status</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
               {filteredRecords.filter((r: AttendanceRecord) => r.status === 'PRESENT').length}
             </div>
             <p className="text-xs text-muted-foreground">Currently present</p>
@@ -234,10 +234,10 @@ export default function EditedRecordsListPage() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Time Adjustments</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Time Adjustments</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">
+            <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
               {filteredRecords.filter((r: AttendanceRecord) => 
                 r.checkInTime || r.checkOutTime || r.breakInTime || r.breakOutTime
               ).length}
@@ -248,16 +248,16 @@ export default function EditedRecordsListPage() {
       </div>
 
       {/* Filter & Search */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm mb-6">
-        <div className="px-6 py-4 border-b border-gray-100">
-          <h3 className="text-base font-medium text-gray-900">Filter Edited Records</h3>
+      <div className="bg-card rounded-lg border shadow-sm mb-6">
+        <div className="px-6 py-4 border-b">
+          <h3 className="text-base font-medium">Filter Edited Records</h3>
         </div>
         
         <div className="p-6">
           <div className="flex items-center gap-4 mb-4">
             <div className="flex-1 min-w-0">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search by employee name, code..."
                   value={employeeSearch}
@@ -265,7 +265,7 @@ export default function EditedRecordsListPage() {
                     setEmployeeSearch(e.target.value)
                     setCurrentPage(1)
                   }}
-                  className="pl-10 h-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  className="pl-10 h-10"
                 />
               </div>
             </div>
@@ -275,7 +275,7 @@ export default function EditedRecordsListPage() {
                 setStatusFilter(value)
                 setCurrentPage(1)
               }}>
-                <SelectTrigger className="w-40 h-10 border-gray-300">
+                <SelectTrigger className="w-40 h-10">
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -294,7 +294,7 @@ export default function EditedRecordsListPage() {
                   setDateFilter(e.target.value)
                   setCurrentPage(1)
                 }}
-                className="w-40 h-10 border-gray-300"
+                className="w-40 h-10"
                 placeholder="Filter by date"
               />
 
@@ -302,7 +302,7 @@ export default function EditedRecordsListPage() {
                 variant="ghost" 
                 size="sm" 
                 onClick={clearAllFilters}
-                className="h-10 px-3 text-sm text-gray-600 hover:text-gray-900"
+                className="h-10 px-3 text-sm"
               >
                 Clear Filters
               </Button>
@@ -312,7 +312,7 @@ export default function EditedRecordsListPage() {
       </div>
 
       {/* Records Table */}
-      <div className="bg-white rounded-lg border">
+      <div className="bg-card rounded-lg border">
         {isLoading ? (
           <div className="text-center py-12">Loading edited records...</div>
         ) : (
@@ -338,17 +338,17 @@ export default function EditedRecordsListPage() {
             <TableBody>
               {paginatedRecords.map((record: AttendanceRecord) => (
                 <React.Fragment key={record.id}>
-                  <TableRow className="hover:bg-gray-50/50 transition-colors">
+                  <TableRow className="hover:bg-muted/50 transition-colors">
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
-                        <div className="font-medium text-gray-900">{record.employeeName}</div>
-                        <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs">
+                        <div className="font-medium">{record.employeeName}</div>
+                        <Badge variant="outline" className="bg-orange-50 dark:bg-orange-950 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800 text-xs">
                           <Edit className="h-3 w-3 mr-1" />
                           Modified
                         </Badge>
                       </div>
                     </TableCell>
-                    <TableCell className="font-mono text-sm text-gray-600">
+                    <TableCell className="font-mono text-sm text-muted-foreground">
                       {record.employeeCode}
                     </TableCell>
                     <TableCell className="text-sm">
@@ -377,22 +377,22 @@ export default function EditedRecordsListPage() {
                     <TableCell className="text-center font-mono text-sm font-medium">
                       {formatHours(record.overtime)}
                     </TableCell>
-                    <TableCell className="text-left text-sm text-gray-700 max-w-xs">
+                    <TableCell className="text-left text-sm text-muted-foreground max-w-xs">
                       <div className="truncate" title={record.editReason || 'No reason provided'}>
                         {record.editReason || 'No reason provided'}
                       </div>
                     </TableCell>
                     <TableCell className="text-center">
                       {record.editHistory && record.editHistory.length > 0 ? (
-                        <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
+                        <Badge variant="secondary" className="bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800">
                           <Clock className="h-3 w-3 mr-1" />
                           {record.editHistory.length} change{record.editHistory.length !== 1 ? 's' : ''}
                         </Badge>
                       ) : (
-                        <span className="text-gray-400 text-sm">No changes</span>
+                        <span className="text-muted-foreground text-sm">No changes</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-center text-sm text-gray-600">
+                    <TableCell className="text-center text-sm text-muted-foreground">
                       {record.updatedAt || record.editedAt ? new Date(record.updatedAt || record.editedAt!).toLocaleString() : '-'}
                     </TableCell>
                     <TableCell className="text-center">
@@ -409,7 +409,7 @@ export default function EditedRecordsListPage() {
                           }
                         </Button>
                       ) : (
-                        <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200">
+                        <Badge variant="secondary" className="bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800">
                           <Edit className="h-3 w-3 mr-1" />
                           Completed
                         </Badge>
@@ -420,44 +420,44 @@ export default function EditedRecordsListPage() {
                   {/* Expandable change details row */}
                   {expandedRecord === record.id && record.editHistory && (
                     <TableRow>
-                      <TableCell colSpan={14} className="bg-gray-50 p-0">
+                      <TableCell colSpan={14} className="bg-muted/50 p-0">
                         <div className="p-4">
-                          <h4 className="text-sm font-medium text-gray-900 mb-3">Change History</h4>
+                          <h4 className="text-sm font-medium mb-3">Change History</h4>
                           <div className="space-y-3">
                             {record.editHistory.map((edit, index) => (
-                              <div key={edit.id} className="bg-white rounded-lg border p-3">
+                              <div key={edit.id} className="bg-card rounded-lg border p-3">
                                 <div className="flex items-start justify-between">
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-2">
                                       <Badge variant="outline" className="text-xs">
                                         {formatFieldName(edit.fieldChanged)}
                                       </Badge>
-                                      <span className="text-xs text-gray-500">
+                                      <span className="text-xs text-muted-foreground">
                                         {new Date(edit.editedAt).toLocaleString()}
                                       </span>
-                                      <span className="text-xs text-gray-500">
+                                      <span className="text-xs text-muted-foreground">
                                         by {edit.editedBy}
                                       </span>
                                     </div>
                                     
                                     <div className="flex items-center gap-3 text-sm">
                                       <div className="flex items-center gap-1">
-                                        <span className="text-gray-500">From:</span>
-                                        <span className="font-mono bg-red-50 text-red-700 px-2 py-1 rounded">
+                                        <span className="text-muted-foreground">From:</span>
+                                        <span className="font-mono bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 px-2 py-1 rounded">
                                           {formatValue(edit.oldValue)}
                                         </span>
                                       </div>
-                                      <ArrowRight className="h-3 w-3 text-gray-400" />
+                                      <ArrowRight className="h-3 w-3 text-muted-foreground" />
                                       <div className="flex items-center gap-1">
-                                        <span className="text-gray-500">To:</span>
-                                        <span className="font-mono bg-green-50 text-green-700 px-2 py-1 rounded">
+                                        <span className="text-muted-foreground">To:</span>
+                                        <span className="font-mono bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 px-2 py-1 rounded">
                                           {formatValue(edit.newValue)}
                                         </span>
                                       </div>
                                     </div>
                                     
                                     {edit.changeReason && (
-                                      <div className="mt-2 text-sm text-gray-600">
+                                      <div className="mt-2 text-sm text-muted-foreground">
                                         <span className="font-medium">Reason:</span> {edit.changeReason}
                                       </div>
                                     )}
@@ -489,7 +489,7 @@ export default function EditedRecordsListPage() {
 
       {/* Pagination */}
       {totalRecords > 0 && (
-        <div className="flex items-center justify-between bg-white border rounded-lg px-6 py-4 mt-4">
+        <div className="flex items-center justify-between bg-card border rounded-lg px-6 py-4 mt-4">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Show</span>

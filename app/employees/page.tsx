@@ -316,7 +316,7 @@ export default function EmployeesPage() {
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-3">
-        <div className="bg-white p-4 rounded-lg border">
+        <div className="bg-card p-4 rounded-lg border">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Total Employees</p>
@@ -325,22 +325,22 @@ export default function EmployeesPage() {
             <Users className="h-8 w-8 text-blue-500" />
           </div>
         </div>
-        <div className="bg-white p-4 rounded-lg border">
+        <div className="bg-card p-4 rounded-lg border">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Team Leaders</p>
-              <p className="text-2xl font-bold text-blue-600">
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {employees?.filter((e: Employee) => e.role === 'TEAMLEADER').length || 0}
               </p>
             </div>
             <Users className="h-8 w-8 text-purple-500" />
           </div>
         </div>
-        <div className="bg-white p-4 rounded-lg border">
+        <div className="bg-card p-4 rounded-lg border">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Admins</p>
-              <p className="text-2xl font-bold text-red-600">
+              <p className="text-2xl font-bold text-red-600 dark:text-red-400">
                 {employees?.filter((e: Employee) => e.role === 'ADMIN').length || 0}
               </p>
             </div>
@@ -350,7 +350,7 @@ export default function EmployeesPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4 bg-white p-4 rounded-lg border">
+      <div className="flex flex-col md:flex-row gap-4 bg-card p-4 rounded-lg border">
         <div className="flex items-center space-x-2 flex-1">
           <Search className="h-4 w-4 text-muted-foreground" />
           <Input
@@ -411,10 +411,10 @@ export default function EmployeesPage() {
       </div>
 
       {/* Employee Table */}
-      <div className="bg-white rounded-lg border">
+      <div className="bg-card rounded-lg border">
         <Table>
           <TableHeader>
-            <TableRow className="bg-gray-50">
+            <TableRow className="bg-muted/50">
               <TableHead className="font-semibold">EMPLOYEE CODE</TableHead>
               <TableHead className="font-semibold">NAME</TableHead>
               <TableHead className="font-semibold">EMAIL</TableHead>
@@ -434,8 +434,8 @@ export default function EmployeesPage() {
               </TableRow>
             ) : (
               paginatedEmployees.map((employee: Employee) => (
-                <TableRow key={employee.id} className="hover:bg-gray-50">
-                  <TableCell className="font-medium text-blue-600">
+                <TableRow key={employee.id} className="hover:bg-muted/50">
+                  <TableCell className="font-medium text-blue-600 dark:text-blue-400">
                     {employee.employeeCode}
                   </TableCell>
                   <TableCell className="font-medium">{employee.name}</TableCell>
@@ -507,7 +507,7 @@ export default function EmployeesPage() {
 
       {/* Pagination */}
       {totalRecords > 0 && (
-        <div className="flex items-center justify-between bg-white border rounded-lg px-6 py-4">
+        <div className="flex items-center justify-between bg-card border rounded-lg px-6 py-4">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Show</span>

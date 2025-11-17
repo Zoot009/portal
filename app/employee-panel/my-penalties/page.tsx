@@ -211,10 +211,10 @@ export default function MyPenaltiesPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Warnings</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-yellow-600" />
+            <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{stats.activeWarnings}</div>
+            <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{stats.activeWarnings}</div>
             <p className="text-xs text-muted-foreground">Requiring attention</p>
           </CardContent>
         </Card>
@@ -222,10 +222,10 @@ export default function MyPenaltiesPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Penalties</CardTitle>
-            <ShieldAlert className="h-4 w-4 text-red-600" />
+            <ShieldAlert className="h-4 w-4 text-red-600 dark:text-red-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.activePenalties}</div>
+            <div className="text-2xl font-bold text-red-600 dark:text-red-400">{stats.activePenalties}</div>
             <p className="text-xs text-muted-foreground">Pending clearance</p>
           </CardContent>
         </Card>
@@ -308,14 +308,14 @@ export default function MyPenaltiesPage() {
                   <div className="flex items-start justify-between p-4">
                     <div className="flex items-start gap-3 flex-1">
                       <div className="flex-shrink-0 mt-1">
-                        <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                          <AlertTriangle className="h-4 w-4 text-gray-600" />
+                        <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center">
+                          <AlertTriangle className="h-4 w-4 text-foreground" />
                         </div>
                       </div>
                       
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-sm font-medium text-gray-900">
+                          <h3 className="text-sm font-medium">
                             {warning.warningType.replace(/_/g, ' ')}
                           </h3>
                           <Badge variant="outline" className="text-xs">
@@ -326,20 +326,20 @@ export default function MyPenaltiesPage() {
                           )}
                         </div>
                         
-                        <p className="text-sm text-gray-700 mb-2">{warning.warningMessage}</p>
+                        <p className="text-sm text-foreground mb-2">{warning.warningMessage}</p>
                         
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-muted-foreground">
                           Issued: {formatISTDateTime(warning.warningDate)}
                         </p>
                         
                         {warning.relatedDate && (
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-muted-foreground mt-1">
                             Related Date: {format(new Date(warning.relatedDate), 'PPP')}
                           </p>
                         )}
                         
                         {warning.viewedByEmployee && warning.viewedAt && (
-                          <p className="text-xs text-green-600 mt-1">
+                          <p className="text-xs text-green-600 dark:text-green-400 mt-1">
                             ✓ Read on {formatISTDateTime(warning.viewedAt)}
                           </p>
                         )}
@@ -408,14 +408,14 @@ export default function MyPenaltiesPage() {
                   <div className="flex items-start justify-between p-4">
                     <div className="flex items-start gap-3 flex-1">
                       <div className="flex-shrink-0 mt-1">
-                        <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                          <ShieldAlert className="h-4 w-4 text-gray-600" />
+                        <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center">
+                          <ShieldAlert className="h-4 w-4 text-foreground" />
                         </div>
                       </div>
                       
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-sm font-medium text-gray-900">
+                          <h3 className="text-sm font-medium">
                             {penalty.penaltyType.replace(/_/g, ' ')}
                           </h3>
                           {penalty.amount && (
@@ -428,20 +428,20 @@ export default function MyPenaltiesPage() {
                           )}
                         </div>
                         
-                        <p className="text-sm text-gray-700 mb-2">{penalty.description}</p>
+                        <p className="text-sm text-foreground mb-2">{penalty.description}</p>
                         
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-muted-foreground">
                           Issued: {formatISTDateTime(penalty.penaltyDate)}
                         </p>
                         
                         {penalty.notes && (
-                          <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-600">
+                          <div className="mt-2 p-2 bg-muted rounded text-xs text-muted-foreground">
                             <strong>Notes:</strong> {penalty.notes}
                           </div>
                         )}
                         
                         {penalty.viewedByEmployee && penalty.viewedAt && (
-                          <p className="text-xs text-green-600 mt-1">
+                          <p className="text-xs text-green-600 dark:text-green-400 mt-1">
                             ✓ Read on {formatISTDateTime(penalty.viewedAt)}
                           </p>
                         )}

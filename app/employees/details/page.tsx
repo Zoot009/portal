@@ -65,7 +65,7 @@ export default function EmployeeDetailsPage() {
         </p>
       </div>
 
-      <div className="flex items-center space-x-2 bg-white p-4 rounded-lg border">
+      <div className="flex items-center space-x-2 bg-card p-4 rounded-lg border">
         <Search className="h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Search by name, email, code, or designation..."
