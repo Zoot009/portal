@@ -253,17 +253,30 @@ export default function MyAttendanceAnalyticsPage() {
     const dailyMinutes = configValueToMinutes(dailyHours)
     
     const selectedCycle = availableCycles.find(c => c.value === cycleFilter)
-    if (!selectedCycle) return { workingDays: 0, hoursGoal: 0, dailyGoalMinutes: dailyMinutes }
+    if (!selectedCycle) return { workingDays: 0, hoursGoal: 0, dailyGoalMinutes: dailyMinutes, remainingWorkingDays: 0 }
     
     const allDays = eachDayOfInterval({ start: selectedCycle.startDate, end: selectedCycle.endDate })
     const workingDays = allDays.filter(day => !isSunday(day)).length
     const totalMinutesGoal = workingDays * dailyMinutes
     const hoursGoal = minutesToHours(totalMinutesGoal)
     
-    return { workingDays, hoursGoal, dailyGoalMinutes: dailyMinutes }
+    // Calculate remaining working days from today until cycle end
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const cycleEnd = new Date(selectedCycle.endDate)
+    cycleEnd.setHours(23, 59, 59, 999)
+    
+    let remainingWorkingDays = 0
+    if (today <= cycleEnd) {
+      const futureStart = today > selectedCycle.startDate ? today : selectedCycle.startDate
+      const remainingDays = eachDayOfInterval({ start: futureStart, end: selectedCycle.endDate })
+      remainingWorkingDays = remainingDays.filter(day => !isSunday(day)).length
+    }
+    
+    return { workingDays, hoursGoal, dailyGoalMinutes: dailyMinutes, remainingWorkingDays }
   }
 
-  const { workingDays, hoursGoal, dailyGoalMinutes } = calculateHoursGoal()
+  const { workingDays, hoursGoal, dailyGoalMinutes, remainingWorkingDays } = calculateHoursGoal()
 
   // Calculate comprehensive statistics
   const stats = filteredRecords.reduce((acc, record) => {
@@ -531,14 +544,14 @@ export default function MyAttendanceAnalyticsPage() {
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">Remaining Days</span>
                         <span className="font-semibold text-orange-600">
-                          {workingDays - stats.daysWithHours} days
+                          {remainingWorkingDays} days
                         </span>
                       </div>
                       
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">Needed Per Day</span>
                         <span className="font-semibold text-red-600">
-                          {formatHoursToTime(hoursRemaining / Math.max(1, workingDays - stats.daysWithHours))}/day
+                          {formatHoursToTime(hoursRemaining / Math.max(1, remainingWorkingDays))}/day
                         </span>
                       </div>
                     </>
@@ -554,7 +567,7 @@ export default function MyAttendanceAnalyticsPage() {
                           <strong>{formatHoursToTime(hoursRemaining)}</strong> hours remaining
                         </div>
                         <div>
-                          Need <strong>{formatHoursToTime(hoursRemaining / Math.max(1, workingDays - stats.daysWithHours))}</strong> per day 
+                          Need <strong>{formatHoursToTime(hoursRemaining / Math.max(1, remainingWorkingDays))}</strong> per day 
                           {daysNeeded > 0 && (
                             <> (or maintain current pace for <strong>~{daysNeeded} days</strong>)</>
                           )}
