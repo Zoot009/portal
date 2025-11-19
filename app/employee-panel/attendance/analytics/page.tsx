@@ -458,9 +458,15 @@ export default function MyAttendanceAnalyticsPage() {
                 <div className={`text-2xl font-bold ${hoursRemaining > 0 ? 'text-orange-600' : 'text-green-600'}`}>
                   {hoursRemaining > 0 ? formatHoursToTime(hoursRemaining) : '✓ Goal Met'}
                 </div>
-                {hoursRemaining > 0 && daysNeeded > 0 && (
+                {hoursRemaining > 0 && (
                   <p className="text-xs text-muted-foreground mt-2">
-                    ~{daysNeeded} days at current pace
+                    {remainingWorkingDays} days left
+                    {daysNeeded > 0 && daysNeeded > remainingWorkingDays && (
+                      <span className="text-red-600 font-medium"> • Need to increase pace!</span>
+                    )}
+                    {daysNeeded > 0 && daysNeeded <= remainingWorkingDays && (
+                      <span className="text-green-600"> • On track</span>
+                    )}
                   </p>
                 )}
               </CardContent>
@@ -559,28 +565,25 @@ export default function MyAttendanceAnalyticsPage() {
                 </div>
 
                 {hoursRemaining > 0 ? (
-                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                    <div className="flex items-start gap-2">
-                      <Target className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
-                      <div className="text-xs text-orange-700 space-y-1">
-                        <div>
-                          <strong>{formatHoursToTime(hoursRemaining)}</strong> hours remaining
+                  <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <Target className="h-5 w-5 text-orange-600 dark:text-orange-400 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <div className="text-sm font-semibold text-orange-900 dark:text-orange-100">
+                          {formatHoursToTime(hoursRemaining)} hours remaining in {remainingWorkingDays} days
                         </div>
-                        <div>
-                          Need <strong>{formatHoursToTime(hoursRemaining / Math.max(1, remainingWorkingDays))}</strong> per day 
-                          {daysNeeded > 0 && (
-                            <> (or maintain current pace for <strong>~{daysNeeded} days</strong>)</>
-                          )}
+                        <div className="text-sm text-orange-800 dark:text-orange-200">
+                          Need <span className="font-bold text-orange-900 dark:text-orange-100">{formatHoursToTime(hoursRemaining / Math.max(1, remainingWorkingDays))}/day</span> to meet goal
                         </div>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                    <div className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                      <div className="text-xs text-green-700">
-                        <strong>Goal Achieved! 🎉</strong> You've met your hours goal for this period.
+                  <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm font-semibold text-green-900 dark:text-green-100">
+                        Goal Achieved! 🎉 You've met your hours goal for this period.
                       </div>
                     </div>
                   </div>
