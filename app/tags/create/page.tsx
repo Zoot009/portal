@@ -17,7 +17,6 @@ export default function CreateTagPage() {
   const [formData, setFormData] = useState({
     tagName: '',
     timeMinutes: '',
-    isActive: true,
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,13 +24,29 @@ export default function CreateTagPage() {
     setIsSubmitting(true)
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      const response = await fetch('/api/tags', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tagName: formData.tagName,
+          timeMinutes: parseInt(formData.timeMinutes),
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create tag')
+      }
       
       toast.success('Tag created successfully!')
       router.push('/tags')
-    } catch (error) {
-      toast.error('Failed to create tag')
+      router.refresh()
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to create tag')
+      console.error('Error creating tag:', error)
     } finally {
       setIsSubmitting(false)
     }
@@ -109,23 +124,6 @@ export default function CreateTagPage() {
                   </>
                 )}
               </p>
-            </div>
-
-            {/* Active Status */}
-            <div className="flex items-center justify-between rounded-lg border p-4">
-              <div className="space-y-0.5">
-                <Label htmlFor="isActive">Active Status</Label>
-                <p className="text-sm text-muted-foreground">
-                  Set whether this tag is active or inactive
-                </p>
-              </div>
-              <Switch
-                id="isActive"
-                checked={formData.isActive}
-                onCheckedChange={(checked) => 
-                  setFormData(prev => ({ ...prev, isActive: checked }))
-                }
-              />
             </div>
 
             {/* Action Buttons */}

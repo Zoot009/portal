@@ -7,33 +7,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
-import { ArrowLeft, Save } from 'lucide-react'
+import { ArrowLeft, Save, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-
-// Mock data for demonstration
-const mockTags = [
-  {
-    id: 1,
-    tagName: "Frontend Development",
-    timeMinutes: 480,
-    category: "Development",
-    isActive: true,
-    createdAt: "2024-01-15",
-    assignmentCount: 15,
-    logCount: 145
-  },
-  {
-    id: 2,
-    tagName: "Backend API",
-    timeMinutes: 360,
-    category: "Development",
-    isActive: true,
-    createdAt: "2024-01-20",
-    assignmentCount: 12,
-    logCount: 98
-  },
-]
 
 export default function EditTagPage() {
   const router = useRouter()
@@ -45,31 +21,39 @@ export default function EditTagPage() {
   const [formData, setFormData] = useState({
     tagName: '',
     timeMinutes: '',
+    category: '',
     isActive: true,
   })
 
   useEffect(() => {
-    // Simulate fetching tag data
     const fetchTag = async () => {
       try {
-        await new Promise(resolve => setTimeout(resolve, 500))
-        const tag = mockTags.find(t => t.id === Number(tagId))
+        const response = await fetch(`/api/tags/${tagId}`)
+        const result = await response.json()
         
-        if (tag) {
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to fetch tag')
+        }
+
+        if (result.data) {
           setFormData({
-            tagName: tag.tagName,
-            timeMinutes: tag.timeMinutes.toString(),
-            isActive: tag.isActive,
+            tagName: result.data.tagName,
+            timeMinutes: result.data.timeMinutes.toString(),
+            category: result.data.category || '',
+            isActive: result.data.isActive,
           })
         }
-      } catch (error) {
-        toast.error('Failed to load tag')
+      } catch (error: any) {
+        toast.error(error.message || 'Failed to load tag')
+        console.error('Error fetching tag:', error)
       } finally {
         setIsLoading(false)
       }
     }
 
-    fetchTag()
+    if (tagId) {
+      fetchTag()
+    }
   }, [tagId])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,13 +61,31 @@ export default function EditTagPage() {
     setIsSubmitting(true)
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      const response = await fetch(`/api/tags/${tagId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tagName: formData.tagName,
+          timeMinutes: parseInt(formData.timeMinutes),
+          category: formData.category || null,
+          isActive: formData.isActive,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update tag')
+      }
       
       toast.success('Tag updated successfully!')
       router.push('/tags')
-    } catch (error) {
-      toast.error('Failed to update tag')
+      router.refresh()
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update tag')
+      console.error('Error updating tag:', error)
     } finally {
       setIsSubmitting(false)
     }
@@ -100,7 +102,7 @@ export default function EditTagPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="text-xl">Loading...</div>
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     )
   }
@@ -168,6 +170,23 @@ export default function EditTagPage() {
                     {Math.floor(Number(formData.timeMinutes) / 60)}h {Number(formData.timeMinutes) % 60}m
                   </>
                 )}
+              </p>
+            </div>
+
+            {/* Category (Optional) */}
+            <div className="space-y-2">
+              <Label htmlFor="category">
+                Category (Optional)
+              </Label>
+              <Input
+                id="category"
+                name="category"
+                placeholder="e.g., Development, QA, Communication"
+                value={formData.category}
+                onChange={handleInputChange}
+              />
+              <p className="text-xs text-muted-foreground">
+                Group tags by category for better organization
               </p>
             </div>
 

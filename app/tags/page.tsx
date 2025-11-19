@@ -1,15 +1,26 @@
 'use client'
 
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Search, Plus, Edit, Trash2, Tag, MoreVertical, UserCheck, FileText } from 'lucide-react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 
 interface TagData {
   id: number
@@ -25,9 +36,12 @@ interface TagData {
 }
 
 export default function TagsPage() {
+  const queryClient = useQueryClient()
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [tagToDelete, setTagToDelete] = useState<TagData | null>(null)
 
   const { data: tagsResponse, isLoading } = useQuery({
     queryKey: ['tags'],
@@ -39,6 +53,39 @@ export default function TagsPage() {
       return response.json()
     }
   })
+
+  const deleteMutation = useMutation({
+    mutationFn: async (tagId: number) => {
+      const response = await fetch(`/api/tags/${tagId}`, {
+        method: 'DELETE',
+      })
+      if (!response.ok) {
+        const result = await response.json()
+        throw new Error(result.error || 'Failed to delete tag')
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      toast.success('Tag deleted successfully')
+      queryClient.invalidateQueries({ queryKey: ['tags'] })
+      setDeleteDialogOpen(false)
+      setTagToDelete(null)
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to delete tag')
+    },
+  })
+
+  const handleDeleteClick = (tag: TagData) => {
+    setTagToDelete(tag)
+    setDeleteDialogOpen(true)
+  }
+
+  const handleDeleteConfirm = () => {
+    if (tagToDelete) {
+      deleteMutation.mutate(tagToDelete.id)
+    }
+  }
 
   const tags = tagsResponse?.data || []
 
@@ -251,7 +298,10 @@ export default function TagsPage() {
                             Edit
                           </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-600 cursor-pointer focus:text-red-600">
+                        <DropdownMenuItem 
+                          className="text-red-600 cursor-pointer focus:text-red-600"
+                          onClick={() => handleDeleteClick(tag)}
+                        >
                           <Trash2 className="mr-2 h-4 w-4" />
                           Delete
                         </DropdownMenuItem>
@@ -330,6 +380,33 @@ export default function TagsPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Tag</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the tag "{tagToDelete?.tagName}"? This action cannot be undone.
+              {tagToDelete && tagToDelete._count.assignments > 0 && (
+                <div className="mt-2 p-2 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded text-orange-800 dark:text-orange-200">
+                  ⚠️ This tag is assigned to {tagToDelete._count.assignments} employee(s).
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

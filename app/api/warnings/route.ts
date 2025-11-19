@@ -110,6 +110,13 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // Check for automatic penalty creation (run in background)
+    if (warningType === 'WORK_QUALITY') {
+      checkAndCreateAutomaticPenalty(parseInt(employeeId)).catch((err: any) => {
+        console.error('Error checking automatic penalty:', err)
+      })
+    }
+
     return NextResponse.json(
       {
         success: true,
@@ -128,5 +135,111 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     )
+  }
+}
+
+// Helper function to check and create automatic penalty
+async function checkAndCreateAutomaticPenalty(employeeId: number) {
+  try {
+    // Get penalty settings
+    const settings = await prisma.penaltySettings.findFirst({
+      where: { isActive: true },
+    })
+
+    if (!settings || !settings.autoCreate) {
+      return
+    }
+
+    // Calculate current salary cycle
+    const salaryDayStart = settings.salaryDayStart
+    const now = new Date()
+    const currentMonth = now.getMonth()
+    const currentYear = now.getFullYear()
+    const currentDay = now.getDate()
+
+    let cycleStartDate: Date
+    let cycleEndDate: Date
+
+    if (currentDay >= salaryDayStart) {
+      cycleStartDate = new Date(currentYear, currentMonth, salaryDayStart)
+      cycleEndDate = new Date(currentYear, currentMonth + 1, salaryDayStart - 1)
+    } else {
+      cycleStartDate = new Date(currentYear, currentMonth - 1, salaryDayStart)
+      cycleEndDate = new Date(currentYear, currentMonth, salaryDayStart - 1)
+    }
+
+    // Count warnings for this employee in the current salary cycle
+    const warningCount = await prisma.warning.count({
+      where: {
+        employeeId,
+        warningType: 'WORK_QUALITY',
+        warningDate: {
+          gte: cycleStartDate,
+          lte: cycleEndDate,
+        },
+        isActive: true,
+      },
+    })
+
+    console.log(`Employee ${employeeId} has ${warningCount} warnings in current cycle (threshold: ${settings.warningThreshold})`)
+
+    // Check if threshold is reached
+    if (warningCount >= settings.warningThreshold) {
+      // Check if penalty already exists for this cycle to avoid duplicates
+      const existingPenalty = await prisma.penalty.findFirst({
+        where: {
+          employeeId,
+          penaltyType: settings.penaltyType as any,
+          penaltyDate: {
+            gte: cycleStartDate,
+            lte: cycleEndDate,
+          },
+          description: {
+            contains: 'automatic penalty',
+          },
+        },
+      })
+
+      if (existingPenalty) {
+        console.log(`Penalty already exists for employee ${employeeId} in current cycle`)
+        return
+      }
+
+      // Create automatic penalty
+      const penaltyMessage = settings.penaltyMessageTemplate
+        ? settings.penaltyMessageTemplate.replace('{count}', warningCount.toString())
+        : `Automatic penalty: Received ${warningCount} warnings in current salary cycle for not completing mandatory tasks`
+
+      const penalty = await prisma.penalty.create({
+        data: {
+          employeeId,
+          penaltyType: settings.penaltyType as any,
+          amount: settings.penaltyAmount,
+          description: penaltyMessage,
+          penaltyDate: new Date(),
+          issuedBy: null, // System-generated
+          notes: `Automatically generated after reaching ${settings.warningThreshold} warnings in salary cycle (${cycleStartDate.toLocaleDateString()} - ${cycleEndDate.toLocaleDateString()})`,
+        },
+      })
+
+      console.log(`✅ Automatic penalty created for employee ${employeeId}:`, penalty.id)
+
+      // Create notification for the employee
+      await prisma.notification.create({
+        data: {
+          employeeId,
+          type: 'PENALTY_ISSUED',
+          title: 'Automatic Penalty Issued',
+          message: `You have been issued a penalty of ₹${settings.penaltyAmount} for receiving ${warningCount} warnings in the current salary cycle.`,
+          priority: 'HIGH',
+          relatedId: penalty.id,
+          relatedType: 'penalty',
+        },
+      })
+
+      console.log(`Notification created for employee ${employeeId}`)
+    }
+  } catch (error) {
+    console.error('Error in checkAndCreateAutomaticPenalty:', error)
   }
 }
