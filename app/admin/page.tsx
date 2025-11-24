@@ -293,7 +293,7 @@ function AdminPage() {
                 </div>
               ) : filteredWarnings.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
-                  <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
                   <p className="text-lg font-medium">No warnings found</p>
                   <p className="text-sm mt-2">
                     {searchTerm || statusFilter !== 'ALL'
@@ -307,38 +307,38 @@ function AdminPage() {
                     <div className="flex items-start justify-between p-4">
                       <div className="flex items-start gap-3 flex-1">
                         <div className="flex-shrink-0 mt-1">
-                          <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <AlertTriangle className="h-4 w-4 text-gray-600" />
+                          <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center">
+                            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
                           </div>
                         </div>
                         
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className="text-sm font-medium text-gray-900">
+                            <h3 className="text-sm font-medium">
                               {warning.warningType.replace(/_/g, ' ')}
                             </h3>
                             <Badge variant="outline" className="text-xs">
                               {warning.severity}
                             </Badge>
                             {warning.viewedByEmployee && (
-                              <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                              <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800">
                                 ✓ Read
                               </Badge>
                             )}
                           </div>
                           
-                          <p className="text-sm text-gray-600 mb-2">
+                          <p className="text-sm text-muted-foreground mb-2">
                             <span className="font-medium">{warning.employee.name}</span>
-                            <span className="text-gray-400 mx-1">•</span>
-                            <span className="text-gray-500">{warning.employee.employeeCode}</span>
+                            <span className="mx-1">•</span>
+                            <span>{warning.employee.employeeCode}</span>
                           </p>
                           
-                          <p className="text-sm text-gray-700 mb-2">{warning.warningMessage}</p>
+                          <p className="text-sm mb-2">{warning.warningMessage}</p>
                           
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-muted-foreground">
                             {new Date(warning.warningDate).toLocaleDateString()}
                             {warning.viewedByEmployee && warning.viewedAt && (
-                              <span className="ml-2 text-green-600">
+                              <span className="ml-2 text-green-600 dark:text-green-400">
                                 • Read on {new Date(warning.viewedAt).toLocaleDateString()}
                               </span>
                             )}
@@ -392,7 +392,7 @@ function AdminPage() {
                 </div>
               ) : filteredPenalties.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
-                  <ShieldAlert className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <ShieldAlert className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
                   <p className="text-lg font-medium">No penalties found</p>
                   <p className="text-sm mt-2">
                     {searchTerm || statusFilter !== 'ALL'
@@ -408,14 +408,14 @@ function AdminPage() {
                       <div className="flex items-start justify-between p-4">
                         <div className="flex items-start gap-3 flex-1">
                           <div className="flex-shrink-0 mt-1">
-                            <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                              <ShieldAlert className="h-4 w-4 text-gray-600" />
+                            <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center">
+                              <ShieldAlert className="h-4 w-4 text-muted-foreground" />
                             </div>
                           </div>
                           
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <h3 className="text-sm font-medium text-gray-900">
+                              <h3 className="text-sm font-medium">
                                 {penalty.penaltyType.replace(/_/g, ' ')}
                               </h3>
                               {penalty.amount && (
@@ -424,31 +424,31 @@ function AdminPage() {
                                 </Badge>
                               )}
                               {penalty.viewedByEmployee && (
-                                <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                                <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800">
                                   ✓ Read
                                 </Badge>
                               )}
                             </div>
                             
-                            <p className="text-sm text-gray-600 mb-2">
+                            <p className="text-sm text-muted-foreground mb-2">
                               <span className="font-medium">{penalty.employee.name}</span>
-                              <span className="text-gray-400 mx-1">•</span>
-                              <span className="text-gray-500">{penalty.employee.employeeCode}</span>
+                              <span className="mx-1">•</span>
+                              <span>{penalty.employee.employeeCode}</span>
                             </p>
                             
-                            <p className="text-sm text-gray-700 mb-2">{penalty.description}</p>
+                            <p className="text-sm mb-2">{penalty.description}</p>
                             
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-muted-foreground">
                               {new Date(penalty.penaltyDate).toLocaleDateString()}
                               {penalty.viewedByEmployee && penalty.viewedAt && (
-                                <span className="ml-2 text-green-600">
+                                <span className="ml-2 text-green-600 dark:text-green-400">
                                   • Read on {new Date(penalty.viewedAt).toLocaleDateString()}
                                 </span>
                               )}
                             </p>
                             
                             {penalty.notes && (
-                              <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-600">
+                              <div className="mt-2 p-2 bg-muted/50 rounded text-xs">
                                 <strong>Notes:</strong> {penalty.notes}
                               </div>
                             )}
