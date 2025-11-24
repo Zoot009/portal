@@ -6,16 +6,32 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Coffee, Calendar, Clock, Loader2, Search } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Coffee, Calendar, Clock, Loader2, Search, Edit, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react'
+import React from 'react'
+
+interface EditHistoryEntry {
+  id: number
+  fieldChanged: string
+  oldValue: string | null
+  newValue: string | null
+  changeReason: string | null
+  editedAt: string
+  editedBy: string
+  editedByRole: string
+}
 
 interface BreakSession {
   id: number
   employeeId: number
-  startTime: string
+  startTime: string | null
   endTime: string | null
   duration: number | null
   breakDate: string
   status: 'ACTIVE' | 'COMPLETED'
+  hasBeenEdited?: boolean
+  editReason?: string
+  editHistory?: EditHistoryEntry[]
   createdAt: string
 }
 
@@ -23,6 +39,7 @@ export default function BreakHistoryPage() {
   const [startDateFilter, setStartDateFilter] = useState('')
   const [endDateFilter, setEndDateFilter] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
+  const [expandedBreak, setExpandedBreak] = useState<number | null>(null)
 
   // Fetch employee info
   const { data: authData } = useQuery({
@@ -75,7 +92,8 @@ export default function BreakHistoryPage() {
     return true
   })
 
-  const formatDuration = (minutes: number) => {
+  const formatDuration = (minutes: number | null) => {
+    if (!minutes) return '0m'
     const hours = Math.floor(minutes / 60)
     const mins = minutes % 60
     if (hours > 0) {
@@ -91,6 +109,60 @@ export default function BreakHistoryPage() {
       day: 'numeric',
       year: 'numeric',
     })
+  }
+
+  const formatTime = (dateString: string | null) => {
+    if (!dateString) return '-'
+    const date = new Date(dateString)
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    })
+  }
+
+  // Helper function to format field names
+  const formatFieldName = (fieldName: string): string => {
+    const fieldMap: Record<string, string> = {
+      'breakInTime': 'Break Start Time',
+      'breakOutTime': 'Break End Time',
+      'breakDuration': 'Break Duration'
+    }
+    return fieldMap[fieldName] || fieldName
+  }
+
+  // Helper function to format values
+  const formatValue = (value: string | null, fieldName: string): string => {
+    if (!value || value === 'null' || value === 'Not set') return 'Not set'
+    
+    // Format time values
+    if (fieldName === 'breakInTime' || fieldName === 'breakOutTime') {
+      if (value.includes('T') && value.endsWith('Z')) {
+        try {
+          const date = new Date(value)
+          return date.toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+          })
+        } catch {
+          return value
+        }
+      }
+    }
+
+    // Format duration (in minutes)
+    if (fieldName === 'breakDuration') {
+      const minutes = parseInt(value)
+      if (!isNaN(minutes)) {
+        return formatDuration(minutes)
+      }
+    }
+    
+    return value
   }
 
   // Group breaks by date
@@ -299,37 +371,108 @@ export default function BreakHistoryPage() {
                       <TableHead>End Time</TableHead>
                       <TableHead>Duration</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Modified</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {group.breaks.map((breakSession: BreakSession, index: number) => (
-                      <TableRow key={breakSession.id}>
-                        <TableCell className="font-medium">#{group.breaks.length - index}</TableCell>
-                        <TableCell>
-                          {new Date(breakSession.startTime).toLocaleTimeString('en-US', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: true,
-                          })}
-                        </TableCell>
-                        <TableCell>
-                          {breakSession.endTime
-                            ? new Date(breakSession.endTime).toLocaleTimeString('en-US', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                hour12: true,
-                              })
-                            : '-'}
-                        </TableCell>
-                        <TableCell>
-                          {breakSession.duration ? formatDuration(breakSession.duration) : '-'}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={breakSession.status === 'ACTIVE' ? 'default' : 'secondary'}>
-                            {breakSession.status}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
+                      <React.Fragment key={breakSession.id}>
+                        <TableRow className={breakSession.hasBeenEdited ? 'bg-orange-50/50 dark:bg-orange-950/20' : ''}>
+                          <TableCell className="font-medium">#{group.breaks.length - index}</TableCell>
+                          <TableCell>
+                            {formatTime(breakSession.startTime)}
+                          </TableCell>
+                          <TableCell>
+                            {formatTime(breakSession.endTime)}
+                          </TableCell>
+                          <TableCell>
+                            {formatDuration(breakSession.duration)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={breakSession.status === 'ACTIVE' ? 'default' : 'secondary'}>
+                              {breakSession.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {breakSession.hasBeenEdited ? (
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="bg-orange-50 dark:bg-orange-950 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800">
+                                  <Edit className="h-3 w-3 mr-1" />
+                                  Edited by Admin
+                                </Badge>
+                                {breakSession.editHistory && breakSession.editHistory.length > 0 && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setExpandedBreak(expandedBreak === breakSession.id ? null : breakSession.id)}
+                                    className="h-7 px-2"
+                                  >
+                                    {expandedBreak === breakSession.id ? (
+                                      <ChevronUp className="h-4 w-4" />
+                                    ) : (
+                                      <ChevronDown className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">-</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                        
+                        {/* Expandable edit history */}
+                        {expandedBreak === breakSession.id && breakSession.editHistory && breakSession.editHistory.length > 0 && (
+                          <TableRow>
+                            <TableCell colSpan={6} className="bg-muted/50 p-4">
+                              <div className="space-y-3">
+                                <h4 className="text-sm font-medium">Edit History</h4>
+                                {breakSession.editReason && (
+                                  <div className="rounded-lg bg-card border p-3">
+                                    <p className="text-sm font-medium text-muted-foreground">Admin's Note:</p>
+                                    <p className="text-sm mt-1">{breakSession.editReason}</p>
+                                  </div>
+                                )}
+                                <div className="space-y-2">
+                                  {breakSession.editHistory.map((edit) => (
+                                    <div key={edit.id} className="rounded-lg bg-card border p-3">
+                                      <div className="flex items-start justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                          <Badge variant="outline" className="text-xs">
+                                            {formatFieldName(edit.fieldChanged)}
+                                          </Badge>
+                                          <span className="text-xs text-muted-foreground">
+                                            {new Date(edit.editedAt).toLocaleString()}
+                                          </span>
+                                        </div>
+                                        <span className="text-xs text-muted-foreground">
+                                          by {edit.editedBy}
+                                        </span>
+                                      </div>
+                                      
+                                      <div className="flex items-center gap-3 text-sm">
+                                        <div className="flex items-center gap-1">
+                                          <span className="text-muted-foreground">From:</span>
+                                          <span className="font-mono bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 px-2 py-1 rounded text-xs">
+                                            {formatValue(edit.oldValue, edit.fieldChanged)}
+                                          </span>
+                                        </div>
+                                        <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                        <div className="flex items-center gap-1">
+                                          <span className="text-muted-foreground">To:</span>
+                                          <span className="font-mono bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 px-2 py-1 rounded text-xs">
+                                            {formatValue(edit.newValue, edit.fieldChanged)}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </React.Fragment>
                     ))}
                   </TableBody>
                 </Table>

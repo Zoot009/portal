@@ -159,6 +159,14 @@ const data = {
           title: "Employee Breaks",
           url: "/admin/breaks/employees",
         },
+        {
+          title: "Edited Breaks",
+          url: "/admin/breaks/edited-records",
+        },
+        {
+          title: "Deleted Breaks",
+          url: "/admin/breaks/deleted-records",
+        },
       ],
     },
     {

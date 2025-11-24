@@ -32,6 +32,11 @@ export async function GET(request: NextRequest) {
         employeeId: parseInt(employeeId),
         ...(breakDate && { breakDate }),
       },
+      include: {
+        editHistory: {
+          orderBy: { editedAt: 'desc' },
+        },
+      },
       orderBy: {
         breakInTime: 'desc',
       },
@@ -46,6 +51,9 @@ export async function GET(request: NextRequest) {
       duration: breakSession.breakDuration,
       breakDate: breakSession.breakDate,
       status: breakSession.isActive ? 'ACTIVE' : 'COMPLETED',
+      hasBeenEdited: breakSession.hasBeenEdited,
+      editReason: breakSession.editReason,
+      editHistory: breakSession.editHistory,
       createdAt: breakSession.createdAt,
     }))
 

@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const date = searchParams.get('date')
+    const editedOnly = searchParams.get('edited') === 'true'
 
     const whereClause: any = {}
 
@@ -16,6 +17,11 @@ export async function GET(request: NextRequest) {
       const selectedDate = new Date(date)
       selectedDate.setHours(0, 0, 0, 0)
       whereClause.breakDate = selectedDate
+    }
+
+    // Filter only edited breaks if requested
+    if (editedOnly) {
+      whereClause.hasBeenEdited = true
     }
 
     // Fetch all breaks with employee information
@@ -28,6 +34,9 @@ export async function GET(request: NextRequest) {
             name: true,
             employeeCode: true,
           },
+        },
+        editHistory: {
+          orderBy: { editedAt: 'desc' },
         },
       },
       orderBy: [
@@ -45,6 +54,10 @@ export async function GET(request: NextRequest) {
       duration: breakSession.breakDuration,
       breakDate: breakSession.breakDate,
       status: breakSession.isActive ? 'ACTIVE' : 'COMPLETED',
+      hasBeenEdited: breakSession.hasBeenEdited,
+      editReason: breakSession.editReason,
+      updatedAt: breakSession.updatedAt,
+      editHistory: breakSession.editHistory,
       employee: breakSession.employee,
     }))
 

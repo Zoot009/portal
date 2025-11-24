@@ -268,11 +268,49 @@ model Break {
   breakDuration Int       @default(0) @map("break_duration")
   isActive      Boolean   @default(false) @map("is_active")
   warningSent   Boolean   @default(false) @map("warning_sent")
+  hasBeenEdited Boolean   @default(false) @map("has_been_edited")
+  editReason    String?   @map("edit_reason") @db.Text
   createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at")
 
-  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employee      Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  editHistory   BreakEditHistory[]
 
   @@map("breaks")
+}
+
+model BreakEditHistory {
+  id            Int      @id @default(autoincrement())
+  breakId       Int      @map("break_id")
+  fieldChanged  String   @map("field_changed")
+  oldValue      String?  @map("old_value")
+  newValue      String?  @map("new_value")
+  changeReason  String?  @map("change_reason") @db.Text
+  editedBy      String   @map("edited_by")
+  editedByRole  String   @map("edited_by_role")
+  editedAt      DateTime @default(now()) @map("edited_at")
+
+  break Break @relation(fields: [breakId], references: [id], onDelete: Cascade)
+
+  @@map("break_edit_history")
+}
+
+model DeletedBreakRecord {
+  id              Int      @id @default(autoincrement())
+  employeeId      Int      @map("employee_id")
+  employeeName    String   @map("employee_name")
+  employeeCode    String   @map("employee_code")
+  breakDate       DateTime @map("break_date") @db.Date
+  breakInTime     DateTime? @map("break_in_time")
+  breakOutTime    DateTime? @map("break_out_time")
+  breakDuration   Int      @map("break_duration")
+  deleteReason    String   @map("delete_reason") @db.Text
+  deletedBy       String   @map("deleted_by")
+  deletedByRole   String   @map("deleted_by_role")
+  deletedAt       DateTime @default(now()) @map("deleted_at")
+  originalBreakId Int      @map("original_break_id")
+
+  @@map("deleted_break_records")
 }
 
 // ============================================================================

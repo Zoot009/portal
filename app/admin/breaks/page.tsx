@@ -1,22 +1,42 @@
 'use client'
 
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { Coffee, Calendar, Clock, Search, Download, TrendingUp, Users, Loader2 } from 'lucide-react'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { Coffee, Calendar, Clock, Search, Download, Users, Loader2, Edit, Save, MoreVertical, History, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
+
+interface EditHistoryEntry {
+  id: number
+  fieldChanged: string
+  oldValue: string | null
+  newValue: string | null
+  changeReason: string | null
+  editedAt: string
+  editedBy: string
+  editedByRole: string
+}
 
 interface BreakSession {
   id: number
   employeeId: number
-  startTime: string
+  startTime: string | null
   endTime: string | null
   duration: number | null
   breakDate: string
   status: 'ACTIVE' | 'COMPLETED'
+  hasBeenEdited?: boolean
+  editReason?: string
+  editHistory?: EditHistoryEntry[]
   employee: {
     id: number
     name: string
@@ -27,6 +47,18 @@ interface BreakSession {
 export default function AdminBreaksPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [dateFilter, setDateFilter] = useState('')
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [selectedBreak, setSelectedBreak] = useState<BreakSession | null>(null)
+  const [editFormData, setEditFormData] = useState({
+    breakInTime: '',
+    breakOutTime: '',
+    editReason: '',
+  })
+  const [deleteReason, setDeleteReason] = useState('')
+
+  const queryClient = useQueryClient()
 
   // Fetch all breaks
   const { data: breaksData, isLoading } = useQuery({
@@ -39,6 +71,142 @@ export default function AdminBreaksPage() {
       return response.json()
     },
   })
+
+  // Edit break mutation
+  const editBreakMutation = useMutation({
+    mutationFn: async (data: { id: number; breakInTime: string; breakOutTime: string; editReason: string }) => {
+      const response = await fetch(`/api/admin/breaks/${data.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          breakInTime: data.breakInTime,
+          breakOutTime: data.breakOutTime,
+          editReason: data.editReason,
+        }),
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to edit break')
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      toast.success('Break record updated successfully')
+      queryClient.invalidateQueries({ queryKey: ['admin-breaks'] })
+      setEditDialogOpen(false)
+      setSelectedBreak(null)
+      setEditFormData({ breakInTime: '', breakOutTime: '', editReason: '' })
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update break record')
+    },
+  })
+
+  const handleEditClick = (breakSession: BreakSession) => {
+    setSelectedBreak(breakSession)
+    
+    // Format times for datetime-local input
+    const formatForInput = (dateString: string | null) => {
+      if (!dateString) return ''
+      const date = new Date(dateString)
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      return `${year}-${month}-${day}T${hours}:${minutes}`
+    }
+
+    setEditFormData({
+      breakInTime: formatForInput(breakSession.startTime),
+      breakOutTime: formatForInput(breakSession.endTime),
+      editReason: '',
+    })
+    setEditDialogOpen(true)
+  }
+
+  const handleViewHistory = (breakSession: BreakSession) => {
+    setSelectedBreak(breakSession)
+    setHistoryDialogOpen(true)
+  }
+
+  const handleDeleteClick = (breakSession: BreakSession) => {
+    setSelectedBreak(breakSession)
+    setDeleteReason('')
+    setDeleteDialogOpen(true)
+  }
+
+  // Delete break mutation
+  const deleteBreakMutation = useMutation({
+    mutationFn: async (data: { id: number; deleteReason: string }) => {
+      const response = await fetch(`/api/admin/breaks/${data.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deleteReason: data.deleteReason,
+        }),
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to delete break')
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      toast.success('Break record deleted successfully')
+      queryClient.invalidateQueries({ queryKey: ['admin-breaks'] })
+      setDeleteDialogOpen(false)
+      setSelectedBreak(null)
+      setDeleteReason('')
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete break record')
+    },
+  })
+
+  const handleConfirmDelete = () => {
+    if (!selectedBreak) return
+
+    if (!deleteReason.trim()) {
+      toast.error('Please provide a reason for deleting this break record')
+      return
+    }
+
+    deleteBreakMutation.mutate({
+      id: selectedBreak.id,
+      deleteReason: deleteReason,
+    })
+  }
+
+  const handleSaveEdit = () => {
+    if (!selectedBreak) return
+
+    // Validation
+    if (!editFormData.editReason.trim()) {
+      toast.error('Please provide a reason for editing this break record')
+      return
+    }
+
+    if (!editFormData.breakInTime || !editFormData.breakOutTime) {
+      toast.error('Both break in and break out times are required')
+      return
+    }
+
+    const inTime = new Date(editFormData.breakInTime)
+    const outTime = new Date(editFormData.breakOutTime)
+
+    if (outTime <= inTime) {
+      toast.error('Break end time must be after break start time')
+      return
+    }
+
+    editBreakMutation.mutate({
+      id: selectedBreak.id,
+      breakInTime: inTime.toISOString(),
+      breakOutTime: outTime.toISOString(),
+      editReason: editFormData.editReason,
+    })
+  }
 
   const allBreaks = breaksData?.data || []
 
@@ -67,7 +235,8 @@ export default function AdminBreaksPage() {
     })
   }
 
-  const formatTime = (dateString: string) => {
+  const formatTime = (dateString: string | null) => {
+    if (!dateString) return '-'
     const date = new Date(dateString)
     return date.toLocaleTimeString('en-US', {
       hour: '2-digit',
@@ -225,12 +394,23 @@ export default function AdminBreaksPage() {
                   <TableHead>End Time</TableHead>
                   <TableHead>Duration</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredBreaks.map((breakSession: BreakSession) => (
                   <TableRow key={breakSession.id}>
-                    <TableCell className="font-medium">{breakSession.employee.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {breakSession.employee.name}
+                        {breakSession.hasBeenEdited && (
+                          <Badge variant="outline" className="bg-orange-50 dark:bg-orange-950 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800 text-xs">
+                            <Edit className="h-3 w-3 mr-1" />
+                            Edited
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>{breakSession.employee.employeeCode}</TableCell>
                     <TableCell>{formatDate(breakSession.breakDate)}</TableCell>
                     <TableCell>{formatTime(breakSession.startTime)}</TableCell>
@@ -245,6 +425,38 @@ export default function AdminBreaksPage() {
                         {breakSession.status}
                       </Badge>
                     </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {breakSession.hasBeenEdited && (
+                            <DropdownMenuItem onClick={() => handleViewHistory(breakSession)}>
+                              <History className="h-4 w-4 mr-2" />
+                              View History
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem 
+                            onClick={() => handleEditClick(breakSession)}
+                            disabled={breakSession.status === 'ACTIVE'}
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={() => handleDeleteClick(breakSession)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -252,6 +464,276 @@ export default function AdminBreaksPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Break Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Break Record</DialogTitle>
+            <DialogDescription>
+              Update break times for {selectedBreak?.employee.name} ({selectedBreak?.employee.employeeCode})
+              <br />
+              Date: {selectedBreak && formatDate(selectedBreak.breakDate)}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="breakInTime">Break Start Time *</Label>
+              <Input
+                id="breakInTime"
+                type="datetime-local"
+                value={editFormData.breakInTime}
+                onChange={(e) => setEditFormData({ ...editFormData, breakInTime: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="breakOutTime">Break End Time *</Label>
+              <Input
+                id="breakOutTime"
+                type="datetime-local"
+                value={editFormData.breakOutTime}
+                onChange={(e) => setEditFormData({ ...editFormData, breakOutTime: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="editReason">Reason for Edit *</Label>
+              <Textarea
+                id="editReason"
+                placeholder="Please provide a reason for editing this break record..."
+                value={editFormData.editReason}
+                onChange={(e) => setEditFormData({ ...editFormData, editReason: e.target.value })}
+                rows={3}
+                required
+              />
+              <p className="text-sm text-muted-foreground">
+                This reason will be saved in the edit history
+              </p>
+            </div>
+
+            {editFormData.breakInTime && editFormData.breakOutTime && (
+              <div className="rounded-lg bg-muted p-3">
+                <p className="text-sm font-medium">Calculated Duration:</p>
+                <p className="text-lg font-bold text-primary">
+                  {(() => {
+                    const inTime = new Date(editFormData.breakInTime)
+                    const outTime = new Date(editFormData.breakOutTime)
+                    if (outTime > inTime) {
+                      const minutes = Math.round((outTime.getTime() - inTime.getTime()) / (1000 * 60))
+                      return formatDuration(minutes)
+                    }
+                    return 'Invalid time range'
+                  })()}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditDialogOpen(false)
+                setSelectedBreak(null)
+                setEditFormData({ breakInTime: '', breakOutTime: '', editReason: '' })
+              }}
+              disabled={editBreakMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveEdit}
+              disabled={editBreakMutation.isPending}
+            >
+              {editBreakMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Changes
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View History Dialog */}
+      <Dialog open={historyDialogOpen} onOpenChange={setHistoryDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Break Edit History</DialogTitle>
+            <DialogDescription>
+              View all changes made to this break record for {selectedBreak?.employee.name} ({selectedBreak?.employee.employeeCode})
+              <br />
+              Date: {selectedBreak && formatDate(selectedBreak.breakDate)}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4 max-h-[400px] overflow-y-auto">
+            {selectedBreak?.editHistory && selectedBreak.editHistory.length > 0 ? (
+              <>
+                {selectedBreak.editReason && (
+                  <div className="rounded-lg bg-muted p-3">
+                    <p className="text-sm font-medium">Latest Edit Reason:</p>
+                    <p className="text-sm mt-1">{selectedBreak.editReason}</p>
+                  </div>
+                )}
+                
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium">Change History</h4>
+                  {selectedBreak.editHistory.map((edit: any) => (
+                    <div key={edit.id} className="rounded-lg border p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">
+                            {edit.fieldChanged === 'breakInTime' ? 'Break Start Time' : 
+                             edit.fieldChanged === 'breakOutTime' ? 'Break End Time' : 
+                             edit.fieldChanged === 'breakDuration' ? 'Duration' : 
+                             edit.fieldChanged}
+                          </Badge>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(edit.editedAt).toLocaleString()}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 text-sm">
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground">From:</span>
+                          <span className="font-mono bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 px-2 py-1 rounded text-xs">
+                            {edit.oldValue ? (
+                              edit.fieldChanged === 'breakDuration' ? 
+                                formatDuration(parseInt(edit.oldValue)) :
+                              edit.fieldChanged.includes('Time') ?
+                                new Date(edit.oldValue).toLocaleString('en-US', {
+                                  month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true
+                                }) :
+                              edit.oldValue
+                            ) : 'Not set'}
+                          </span>
+                        </div>
+                        <span>→</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground">To:</span>
+                          <span className="font-mono bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 px-2 py-1 rounded text-xs">
+                            {edit.newValue ? (
+                              edit.fieldChanged === 'breakDuration' ? 
+                                formatDuration(parseInt(edit.newValue)) :
+                              edit.fieldChanged.includes('Time') ?
+                                new Date(edit.newValue).toLocaleString('en-US', {
+                                  month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true
+                                }) :
+                              edit.newValue
+                            ) : 'Not set'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">
+                          Edited by: {edit.editedBy} ({edit.editedByRole})
+                        </span>
+                      </div>
+
+                      {edit.changeReason && (
+                        <div className="text-sm pt-2 border-t">
+                          <span className="text-muted-foreground">Reason:</span> {edit.changeReason}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <History className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p>No edit history available</p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setHistoryDialogOpen(false)
+                setSelectedBreak(null)
+              }}
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Break Record</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this break record for {selectedBreak?.employee.name} ({selectedBreak?.employee.employeeCode})?
+              <br />
+              Date: {selectedBreak && formatDate(selectedBreak.breakDate)}
+              <br />
+              <span className="text-destructive font-medium">This action cannot be undone.</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-2 py-4">
+            <Label htmlFor="deleteReason">Reason for Deletion *</Label>
+            <Textarea
+              id="deleteReason"
+              placeholder="Please provide a detailed reason for deleting this break record..."
+              value={deleteReason}
+              onChange={(e) => setDeleteReason(e.target.value)}
+              rows={3}
+              required
+            />
+            <p className="text-sm text-muted-foreground">
+              This reason will be saved in the deletion history
+            </p>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              onClick={() => {
+                setDeleteDialogOpen(false)
+                setSelectedBreak(null)
+                setDeleteReason('')
+              }}
+              disabled={deleteBreakMutation.isPending}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={deleteBreakMutation.isPending}
+            >
+              {deleteBreakMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Break
+                </>
+              )}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

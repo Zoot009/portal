@@ -75,6 +75,10 @@ const data = {
           title: "View History",
           url: "/employee-panel/break/history",
         },
+        {
+          title: "Deleted Breaks",
+          url: "/employee-panel/break/deleted-records",
+        },
       ],
     },
     {
