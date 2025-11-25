@@ -70,10 +70,11 @@ export default function AttendanceRecordsPage() {
     editReason: ''
   })
 
-  // Delete dialog state
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [deletingRecord, setDeletingRecord] = useState<AttendanceRecord | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
+  // Bulk delete dialog state
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false)
+  const [deleteDate, setDeleteDate] = useState<Date | undefined>(undefined)
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false)
+  const [recordsToDeleteCount, setRecordsToDeleteCount] = useState(0)
 
   // Helper function to format time
   const formatTime = (isoTimeString: string | null | undefined): string => {
@@ -448,36 +449,63 @@ export default function AttendanceRecordsPage() {
     window.location.href = `/attendance/edited-records-list`
   }
 
-  // Handle delete record
-  const handleDeleteRecord = (record: AttendanceRecord) => {
-    setDeletingRecord(record)
-    setIsDeleteDialogOpen(true)
+  // Handle bulk delete by date
+  const handleOpenBulkDelete = () => {
+    setDeleteDate(undefined)
+    setRecordsToDeleteCount(0)
+    setIsBulkDeleteDialogOpen(true)
   }
 
-  // Confirm delete
-  const handleConfirmDelete = async () => {
-    if (!deletingRecord) return
+  // Update count when date changes
+  const handleDeleteDateChange = (date: Date | undefined) => {
+    setDeleteDate(date)
+    if (date) {
+      // Count records for this date
+      const dateStr = date.toISOString().split('T')[0]
+      const count = records.filter((r: AttendanceRecord) => {
+        const recordDate = r.date.split('T')[0]
+        return recordDate === dateStr
+      }).length
+      setRecordsToDeleteCount(count)
+    } else {
+      setRecordsToDeleteCount(0)
+    }
+  }
+
+  // Confirm bulk delete
+  const handleConfirmBulkDelete = async () => {
+    if (!deleteDate) {
+      toast.error('Please select a date')
+      return
+    }
     
-    setIsDeleting(true)
+    setIsBulkDeleting(true)
     try {
-      const response = await fetch(`/api/attendance/records/${deletingRecord.id}`, {
-        method: 'DELETE',
+      const response = await fetch('/api/attendance/bulk-delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          date: deleteDate.toISOString().split('T')[0],
+        }),
       })
 
       const result = await response.json()
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to delete record')
+        throw new Error(result.error || 'Failed to delete records')
       }
 
       await refetch()
-      toast.success('Attendance record deleted successfully')
-      setIsDeleteDialogOpen(false)
-      setDeletingRecord(null)
+      toast.success(result.message || `Deleted ${result.deletedCount} record(s) successfully`)
+      setIsBulkDeleteDialogOpen(false)
+      setDeleteDate(undefined)
+      setRecordsToDeleteCount(0)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to delete record')
+      toast.error(error instanceof Error ? error.message : 'Failed to delete records')
     } finally {
-      setIsDeleting(false)
+      setIsBulkDeleting(false)
     }
   }
 
@@ -496,6 +524,11 @@ export default function AttendanceRecordsPage() {
               Edited Records
             </Button>
           </Link>
+          
+          <Button variant="outline" onClick={handleOpenBulkDelete} className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300">
+            <Trash2 className="h-4 w-4 mr-2" />
+            Bulk Delete
+          </Button>
           
           <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
             <DialogTrigger asChild>
@@ -759,62 +792,80 @@ export default function AttendanceRecordsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
+        <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-red-600" />
-              Delete Attendance Record?
+              Bulk Delete Attendance Records
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to permanently delete this attendance record? This action cannot be undone.
-              <div className="mt-4 p-4 bg-muted rounded-lg">
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="font-medium">Employee:</span>
-                    <span>{deletingRecord?.employeeName}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium">Employee Code:</span>
-                    <span className="font-mono">{deletingRecord?.employeeCode}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium">Date:</span>
-                    <span>
-                      {deletingRecord?.date ? (() => {
-                        const dateStr = deletingRecord.date.split('T')[0]
-                        const [year, month, day] = dateStr.split('-')
-                        return `${month}/${day}/${year}`
-                      })() : '-'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium">Status:</span>
-                    <Badge className={statusColors[deletingRecord?.status || ''] || 'bg-gray-100 text-gray-800'}>
-                      {deletingRecord?.status?.replace('_', ' ')}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
+              Select a date to permanently delete all attendance records for that day. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="delete-date" className="text-sm font-medium mb-2 block">Select Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {deleteDate ? format(deleteDate, "PPP") : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={deleteDate}
+                    onSelect={handleDeleteDateChange}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            
+            {deleteDate && (
+              <div className="bg-muted rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Records to delete:</span>
+                  <Badge variant={recordsToDeleteCount > 0 ? "destructive" : "secondary"} className="text-base px-3 py-1">
+                    {recordsToDeleteCount}
+                  </Badge>
+                </div>
+                {recordsToDeleteCount === 0 && (
+                  <p className="text-xs text-muted-foreground mt-2">No records found for this date</p>
+                )}
+                {recordsToDeleteCount > 0 && (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-2 font-medium">
+                    ⚠️ This will delete all {recordsToDeleteCount} attendance record{recordsToDeleteCount !== 1 ? 's' : ''} for {format(deleteDate, "MMMM d, yyyy")}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+          
           <AlertDialogFooter>
             <AlertDialogCancel 
               onClick={() => {
-                setIsDeleteDialogOpen(false)
-                setDeletingRecord(null)
+                setIsBulkDeleteDialogOpen(false)
+                setDeleteDate(undefined)
+                setRecordsToDeleteCount(0)
               }}
-              disabled={isDeleting}
+              disabled={isBulkDeleting}
             >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleConfirmDelete}
-              disabled={isDeleting}
+              onClick={handleConfirmBulkDelete}
+              disabled={isBulkDeleting || !deleteDate || recordsToDeleteCount === 0}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
-              {isDeleting ? 'Deleting...' : 'Delete Record'}
+              {isBulkDeleting ? 'Deleting...' : `Delete ${recordsToDeleteCount} Record${recordsToDeleteCount !== 1 ? 's' : ''}`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1138,14 +1189,6 @@ export default function AttendanceRecordsPage() {
                             View History
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          onClick={() => handleDeleteRecord(record)}
-                          className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete Record
-                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
