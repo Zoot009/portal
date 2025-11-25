@@ -7,9 +7,10 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Search, Clock, Upload, Calendar as CalendarIcon, MoreVertical, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Search, Clock, Upload, Calendar as CalendarIcon, MoreVertical, Edit, Trash2, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -68,6 +69,11 @@ export default function AttendanceRecordsPage() {
     overtime: '',
     editReason: ''
   })
+
+  // Delete dialog state
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [deletingRecord, setDeletingRecord] = useState<AttendanceRecord | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Helper function to format time
   const formatTime = (isoTimeString: string | null | undefined): string => {
@@ -442,6 +448,39 @@ export default function AttendanceRecordsPage() {
     window.location.href = `/attendance/edited-records-list`
   }
 
+  // Handle delete record
+  const handleDeleteRecord = (record: AttendanceRecord) => {
+    setDeletingRecord(record)
+    setIsDeleteDialogOpen(true)
+  }
+
+  // Confirm delete
+  const handleConfirmDelete = async () => {
+    if (!deletingRecord) return
+    
+    setIsDeleting(true)
+    try {
+      const response = await fetch(`/api/attendance/records/${deletingRecord.id}`, {
+        method: 'DELETE',
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete record')
+      }
+
+      await refetch()
+      toast.success('Attendance record deleted successfully')
+      setIsDeleteDialogOpen(false)
+      setDeletingRecord(null)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete record')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   return (
     <div className="p-6">
       {/* Header */}
@@ -530,7 +569,6 @@ export default function AttendanceRecordsPage() {
               {editingRecord?.employeeName} • {editingRecord?.date ? new Date(editingRecord.date).toLocaleDateString() : ''}
             </DialogDescription>
           </DialogHeader>
-          
           {editingRecord && (
             <div className="space-y-4">
               {/* Status */}
@@ -720,6 +758,67 @@ export default function AttendanceRecordsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              Delete Attendance Record?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete this attendance record? This action cannot be undone.
+              <div className="mt-4 p-4 bg-muted rounded-lg">
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="font-medium">Employee:</span>
+                    <span>{deletingRecord?.employeeName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Employee Code:</span>
+                    <span className="font-mono">{deletingRecord?.employeeCode}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Date:</span>
+                    <span>
+                      {deletingRecord?.date ? (() => {
+                        const dateStr = deletingRecord.date.split('T')[0]
+                        const [year, month, day] = dateStr.split('-')
+                        return `${month}/${day}/${year}`
+                      })() : '-'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Status:</span>
+                    <Badge className={statusColors[deletingRecord?.status || ''] || 'bg-gray-100 text-gray-800'}>
+                      {deletingRecord?.status?.replace('_', ' ')}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              onClick={() => {
+                setIsDeleteDialogOpen(false)
+                setDeletingRecord(null)
+              }}
+              disabled={isDeleting}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Record'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -1039,6 +1138,14 @@ export default function AttendanceRecordsPage() {
                             View History
                           </DropdownMenuItem>
                         )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          onClick={() => handleDeleteRecord(record)}
+                          className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete Record
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
