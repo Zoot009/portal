@@ -12,8 +12,9 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
-import { Coffee, Calendar, Clock, Search, Download, Users, Loader2, Edit, Save, MoreVertical, History, Trash2 } from 'lucide-react'
+import { Coffee, Calendar, Clock, Search, Download, Users, Loader2, Edit, Save, MoreVertical, History, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface EditHistoryEntry {
   id: number
@@ -57,6 +58,8 @@ export default function AdminBreaksPage() {
     editReason: '',
   })
   const [deleteReason, setDeleteReason] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
 
   const queryClient = useQueryClient()
 
@@ -217,6 +220,19 @@ export default function AdminBreaksPage() {
     return matchesSearch
   })
 
+  // Pagination calculations
+  const totalItems = filteredBreaks.length
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedBreaks = filteredBreaks.slice(startIndex, endIndex)
+
+  // Reset to page 1 when filters change
+  const handleFilterChange = (setter: (value: string) => void) => (value: string) => {
+    setter(value)
+    setCurrentPage(1)
+  }
+
   const formatDuration = (minutes: number) => {
     const hours = Math.floor(minutes / 60)
     const mins = minutes % 60
@@ -290,7 +306,7 @@ export default function AdminBreaksPage() {
                 <Input
                   placeholder="Search by name or code..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => handleFilterChange(setSearchTerm)(e.target.value)}
                 />
               </div>
             </div>
@@ -299,7 +315,7 @@ export default function AdminBreaksPage() {
               <Input
                 type="date"
                 value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
+                onChange={(e) => handleFilterChange(setDateFilter)(e.target.value)}
               />
             </div>
           </div>
@@ -369,8 +385,16 @@ export default function AdminBreaksPage() {
       {/* Breaks Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Break Sessions</CardTitle>
-          <CardDescription>All employee break sessions</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Break Sessions</CardTitle>
+              <CardDescription>
+                {filteredBreaks.length === 0 
+                  ? 'All employee break sessions' 
+                  : `Showing ${startIndex + 1}-${Math.min(endIndex, totalItems)} of ${totalItems} break sessions`}
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {filteredBreaks.length === 0 ? (
@@ -398,7 +422,7 @@ export default function AdminBreaksPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredBreaks.map((breakSession: BreakSession) => (
+                {paginatedBreaks.map((breakSession: BreakSession) => (
                   <TableRow key={breakSession.id}>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
@@ -461,6 +485,83 @@ export default function AdminBreaksPage() {
                 ))}
               </TableBody>
             </Table>
+          )}
+
+          {/* Pagination Controls */}
+          {filteredBreaks.length > 0 && totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Rows per page:</span>
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={(value) => {
+                    setItemsPerPage(Number(value))
+                    setCurrentPage(1)
+                  }}
+                >
+                  <SelectTrigger className="w-[70px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-sm text-muted-foreground ml-4">
+                  Page {currentPage} of {totalPages}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Previous
+                </Button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={currentPage === pageNum ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCurrentPage(pageNum)}
+                        className="w-9"
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
