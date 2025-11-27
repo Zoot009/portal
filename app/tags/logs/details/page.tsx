@@ -1,12 +1,24 @@
 'use client'
 
 import { useSearchParams, useRouter } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Calendar, Clock, User, Briefcase, Building2, Tag, XCircle } from 'lucide-react'
+import { ArrowLeft, Calendar, Clock, User, Briefcase, Building2, Tag, XCircle, Trash2 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { toast } from 'sonner'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { useState } from 'react'
 
 interface EmployeeSubmissionStatus {
   employee: {
@@ -46,9 +58,12 @@ interface EmployeeSubmissionStatus {
 export default function WorkLogDetailsPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
+  const queryClient = useQueryClient()
   
   const employeeId = searchParams.get('employeeId')
   const date = searchParams.get('date')
+  
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
   // Fetch submission status for the specific employee
   const { data: submissionStatusResponse, isLoading } = useQuery({
@@ -67,6 +82,55 @@ export default function WorkLogDetailsPage() {
     },
     enabled: !!employeeId && !!date,
   })
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      if (!employeeId || !date) throw new Error('Missing employee ID or date')
+      
+      const response = await fetch('/api/logs/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId: parseInt(employeeId),
+          date: date,
+        }),
+      })
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to delete work logs')
+      }
+      
+      return response.json()
+    },
+    onSuccess: (data) => {
+      console.log('Delete successful:', data)
+      toast.success(`Deleted ${data.data?.logsDeleted || 0} log(s) successfully`)
+      
+      // Clear all related queries - be more aggressive
+      queryClient.invalidateQueries({ queryKey: ['employee-submission-status'] })
+      queryClient.invalidateQueries({ queryKey: ['submission-status'] })
+      queryClient.invalidateQueries({ queryKey: ['work-logs'] })
+      queryClient.removeQueries({ queryKey: ['employee-submission-status', employeeId, date] })
+      queryClient.clear() // Clear entire cache
+      
+      // Redirect after a short delay to ensure cache is cleared
+      setTimeout(() => {
+        router.push('/tags/logs')
+        router.refresh()
+      }, 500)
+    },
+    onError: (error: Error) => {
+      console.error('Delete failed:', error)
+      toast.error(error.message || 'Failed to delete work logs')
+    },
+  })
+
+  const handleDelete = () => {
+    deleteMutation.mutate()
+    setDeleteDialogOpen(false)
+  }
 
   const employeeData: EmployeeSubmissionStatus | null = submissionStatusResponse
 
@@ -145,6 +209,19 @@ export default function WorkLogDetailsPage() {
             </p>
           </div>
         </div>
+        
+        {/* Delete Button - Only show if data exists */}
+        {employeeData.hasSubmitted && employeeData.logs.length > 0 && (
+          <Button
+            variant="destructive"
+            onClick={() => setDeleteDialogOpen(true)}
+            disabled={deleteMutation.isPending}
+            className="gap-2"
+          >
+            <Trash2 className="h-4 w-4" />
+            {deleteMutation.isPending ? 'Deleting...' : 'Delete Submission'}
+          </Button>
+        )}
       </div>
 
       {/* Employee Information Card */}
@@ -452,6 +529,29 @@ export default function WorkLogDetailsPage() {
           Back to Work Logs List
         </Button>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this submission?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete all work logs submitted by <strong>{employeeData?.employee.name}</strong> for <strong>{formattedDate}</strong>.
+              <br /><br />
+              This action cannot be undone. The employee will be able to submit new data for this date.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              Delete Submission
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

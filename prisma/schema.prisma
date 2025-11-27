@@ -79,12 +79,6 @@ model Employee {
   attendanceEditsPerformed   AttendanceEditHistory[]   @relation("AttendanceEditor")
   employeeProfileEditHistory EmployeeEditHistory[]
   employeeEditsPerformed     EmployeeEditHistory[]     @relation("EmployeeEditor")
-  
-  // Gamification Relations
-  employeePoints             EmployeePoints?           @relation("EmployeePoints")
-  pointTransactions          PointTransaction[]        @relation("PointTransactions")
-  coinTransactions           CoinTransaction[]         @relation("CoinTransactions")
-  leaderboards               Leaderboard[]             @relation("Leaderboards")
 
   @@map("employees")
 }
@@ -145,9 +139,32 @@ model Assignment {
 
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   tag      Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  
+  // Day-of-week requirements
+  dayRequirements TagDayRequirement[]
 
   @@unique([employeeId, tagId], name: "employee_tag")
   @@map("assignments")
+}
+
+model TagDayRequirement {
+  id           Int      @id @default(autoincrement())
+  assignmentId Int      @map("assignment_id")
+  employeeId   Int      @map("employee_id")
+  tagId        Int      @map("tag_id")
+  dayOfWeek    Int      @map("day_of_week") // 0=Sunday, 1=Monday, ..., 6=Saturday
+  isRequired   Boolean  @default(true) @map("is_required")
+  notes        String?  // Optional reason/notes
+  createdBy    Int?     @map("created_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, tagId, dayOfWeek], name: "employee_tag_day_requirement")
+  @@index([employeeId, dayOfWeek])
+  @@index([tagId, dayOfWeek])
+  @@map("tag_day_requirements")
 }
 
 model Log {
@@ -818,145 +835,4 @@ enum MaintenanceType {
   INSPECTION
 }
 
-// ============================================================================
-// GAMIFICATION MODELS
-// ============================================================================
 
-model EmployeePoints {
-  id         Int      @id @default(autoincrement())
-  employeeId Int      @map("employee_id")
-  points     Int      @default(0)
-  coins      Int      @default(0) // New: Coins for real-world redemptions
-  level      Int      @default(1)
-  experience Int      @default(0)
-  rank       String   @default("Beginner")
-  
-  // Lifetime earnings tracking
-  lifetimePoints Int @default(0) @map("lifetime_points")
-  lifetimeCoins  Int @default(0) @map("lifetime_coins")
-  
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-
-  employee         Employee              @relation("EmployeePoints", fields: [employeeId], references: [id], onDelete: Cascade)
-  achievements     EmployeeAchievement[]
-  rewards          EmployeeReward[]
-  coinTransactions CoinTransaction[]
-
-  @@unique([employeeId])
-  @@map("employee_points")
-}
-
-model Achievement {
-  id          Int      @id @default(autoincrement())
-  name        String
-  description String
-  icon        String?
-  points      Int      @default(0)
-  coins       Int      @default(0) // New: Coins awarded alongside points
-  category    String   // "attendance", "performance", "milestones", "social"
-  criteria    Json     // Criteria for unlocking the achievement
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  employeeAchievements EmployeeAchievement[]
-
-  @@map("achievements")
-}
-
-model EmployeeAchievement {
-  id            Int      @id @default(autoincrement())
-  employeeId    Int      @map("employee_id")
-  achievementId Int      @map("achievement_id")
-  unlockedAt    DateTime @default(now()) @map("unlocked_at")
-  progress      Int      @default(0) // Progress towards achievement (0-100)
-
-  employeePoints EmployeePoints @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
-  achievement    Achievement    @relation(fields: [achievementId], references: [id], onDelete: Cascade)
-
-  @@unique([employeeId, achievementId])
-  @@map("employee_achievements")
-}
-
-model Reward {
-  id          Int      @id @default(autoincrement())
-  name        String
-  description String
-  icon        String?
-  pointsCost  Int      @default(0) @map("points_cost")
-  coinsCost   Int      @default(0) @map("coins_cost") // New: Some rewards cost coins
-  rewardType  String   @default("points") @map("reward_type") // "points", "coins", "both"
-  category    String   // "benefits", "privileges", "items", "experiences", "cash", "leave", "penalty_removal"
-  
-  // Special reward properties
-  cashValue   Float?   @map("cash_value") // For cash conversion rewards
-  leaveDays   Int?     @map("leave_days") // For paid leave rewards
-  
-  isActive    Boolean  @default(true) @map("is_active")
-  stock       Int?     // Null means unlimited
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  employeeRewards EmployeeReward[]
-
-  @@map("rewards")
-}
-
-model EmployeeReward {
-  id         Int      @id @default(autoincrement())
-  employeeId Int      @map("employee_id")
-  rewardId   Int      @map("reward_id")
-  redeemedAt DateTime @default(now()) @map("redeemed_at")
-  status     String   @default("pending") // "pending", "approved", "used", "expired"
-
-  employeePoints EmployeePoints @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
-  reward         Reward         @relation(fields: [rewardId], references: [id], onDelete: Cascade)
-
-  @@map("employee_rewards")
-}
-
-model PointTransaction {
-  id          Int      @id @default(autoincrement())
-  employeeId  Int      @map("employee_id")
-  points      Int      // Positive for gains, negative for spending
-  type        String   // "earned", "spent", "bonus", "penalty"
-  description String
-  reference   String?  // Reference to related record (e.g., "attendance:123", "reward:456")
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  employee Employee @relation("PointTransactions", fields: [employeeId], references: [id], onDelete: Cascade)
-
-  @@map("point_transactions")
-}
-
-model CoinTransaction {
-  id          Int      @id @default(autoincrement())
-  employeeId  Int      @map("employee_id")
-  coins       Int      // Positive for gains, negative for spending
-  type        String   // "earned", "spent", "converted", "bonus", "achievement"
-  description String
-  reference   String?  // Reference to related record
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  employee       Employee       @relation("CoinTransactions", fields: [employeeId], references: [id], onDelete: Cascade)
-  employeePoints EmployeePoints @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade, map: "coin_transactions_employee_points_fkey")
-
-  @@map("coin_transactions")
-}
-
-model Leaderboard {
-  id         Int      @id @default(autoincrement())
-  employeeId Int      @map("employee_id")
-  period     String   // "daily", "weekly", "monthly", "all-time"
-  rank       Int
-  points     Int
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-
-  employee Employee @relation("Leaderboards", fields: [employeeId], references: [id], onDelete: Cascade)
-
-  @@unique([employeeId, period])
-  @@index([period, rank])
-  @@map("leaderboards")
-}

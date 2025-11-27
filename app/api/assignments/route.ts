@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const employeeId = searchParams.get('employeeId')
     const tagId = searchParams.get('tagId')
+    const mandatoryOnly = searchParams.get('mandatoryOnly')
 
     const where: any = {}
 
@@ -18,6 +19,10 @@ export async function GET(request: NextRequest) {
 
     if (tagId) {
       where.tagId = parseInt(tagId)
+    }
+
+    if (mandatoryOnly === 'true') {
+      where.isMandatory = true
     }
 
     const assignments = await prisma.assignment.findMany({
@@ -41,7 +46,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      assignments,
+      data: assignments,
       count: assignments.length,
     })
   } catch (error: any) {

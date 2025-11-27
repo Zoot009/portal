@@ -3,7 +3,6 @@ import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { prisma } from '@/lib/prisma'
-import { awardPoints, POINT_VALUES } from '@/lib/gamification'
 
 export async function POST(request: NextRequest) {
   let file: File | null = null
@@ -340,39 +339,9 @@ function extractCodeFromEmail(email: string): string {
   return email.split('@')[0].toUpperCase()
 }
 
-// Helper function to award points based on productivity
+// Helper function to award points based on productivity (DISABLED)
 async function awardProductivityPoints(records: any[]) {
-  for (const record of records) {
-    try {
-      if (!record.employeeId) continue
-
-      const productivity = record.productivityPercentage || 0
-
-      let points = 0
-      let description = ''
-
-      if (productivity >= 90) {
-        points = POINT_VALUES.PRODUCTIVITY_HIGH
-        description = 'High productivity (90%+)'
-      } else if (productivity >= 75) {
-        points = POINT_VALUES.PRODUCTIVITY_MEDIUM
-        description = 'Good productivity (75-89%)'
-      } else if (productivity >= 60) {
-        points = POINT_VALUES.PRODUCTIVITY_LOW
-        description = 'Moderate productivity (60-74%)'
-      }
-
-      if (points > 0) {
-        await awardPoints({
-          employeeId: record.employeeId,
-          points,
-          type: 'earned',
-          description,
-          reference: `flowace:${record.id}`
-        })
-      }
-    } catch (error) {
-      console.error(`Error awarding productivity points for record ${record.id}:`, error)
-    }
-  }
+  // Gamification features have been disabled
+  return null;
 }
+

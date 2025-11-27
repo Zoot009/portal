@@ -9,8 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
-import { Plus, UserPlus, MoreVertical, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, UserPlus, MoreVertical, Pencil, Trash2, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { DayScheduleDialog } from '@/components/day-schedule-dialog';
 import {
   Select,
   SelectContent,
@@ -45,13 +46,23 @@ interface Assignment {
   createdAt: string;
 }
 
+interface DayRequirement {
+  dayOfWeek: number;
+  isRequired: boolean;
+  employeeId: number;
+  tagId: number;
+}
+
 export default function TagAssignmentsPage() {
   const router = useRouter();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [dayRequirements, setDayRequirements] = useState<DayRequirement[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
 
   // Fetch data
   useEffect(() => {
@@ -63,7 +74,27 @@ export default function TagAssignmentsPage() {
       setLoading(true);
       const assignmentsRes = await fetch('/api/assignments');
       const assignmentsData = await assignmentsRes.json();
-      setAssignments(assignmentsData.assignments || []);
+      const assignmentsArray = assignmentsData.data || assignmentsData.assignments || [];
+      setAssignments(assignmentsArray);
+
+      // Fetch day requirements for all employees who have assignments
+      const employeeIds = [...new Set(assignmentsArray.map((a: Assignment) => a.employeeId))];
+      const allRequirements: DayRequirement[] = [];
+      
+      for (const employeeId of employeeIds) {
+        try {
+          const reqRes = await fetch(`/api/admin/tag-calendar?employeeId=${employeeId}`);
+          if (reqRes.ok) {
+            const reqData = await reqRes.json();
+            const requirements = reqData.data || reqData.requirements || [];
+            allRequirements.push(...requirements);
+          }
+        } catch (err) {
+          console.error(`Error fetching requirements for employee ${employeeId}:`, err);
+        }
+      }
+      
+      setDayRequirements(allRequirements);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('Failed to load data');
@@ -168,6 +199,29 @@ export default function TagAssignmentsPage() {
     setCurrentPage(1);
   };
 
+  // Helper function to get day schedule for an assignment
+  const getDaySchedule = (assignment: Assignment) => {
+    const requirements = dayRequirements.filter(
+      req => req.employeeId === assignment.employeeId && 
+             req.tagId === assignment.tagId && 
+             req.isRequired
+    );
+    
+    if (requirements.length === 0) {
+      return null;
+    }
+    
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const days = requirements
+      .map(req => dayNames[req.dayOfWeek])
+      .sort((a, b) => {
+        const order = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        return order.indexOf(a) - order.indexOf(b);
+      });
+    
+    return days;
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -237,11 +291,15 @@ export default function TagAssignmentsPage() {
                   <TableHead>Time</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Assigned Date</TableHead>
+                  <TableHead>Schedule</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedAssignments.map((assignment) => (
+                {paginatedAssignments.map((assignment) => {
+                  const daySchedule = getDaySchedule(assignment);
+                  
+                  return (
                   <TableRow key={assignment.id}>
                     <TableCell>
                       <div>
@@ -269,6 +327,25 @@ export default function TagAssignmentsPage() {
                     <TableCell>
                       {new Date(assignment.createdAt).toLocaleDateString()}
                     </TableCell>
+                    <TableCell>
+                      {assignment.isMandatory && daySchedule && daySchedule.length > 0 ? (
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {daySchedule.map((day, idx) => (
+                            <Badge 
+                              key={idx} 
+                              variant="secondary" 
+                              className="text-[10px] px-1.5 py-0 h-5 bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-0"
+                            >
+                              {day}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : assignment.isMandatory ? (
+                        <span className="text-xs text-muted-foreground">All days</span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -276,7 +353,7 @@ export default function TagAssignmentsPage() {
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-32">
+                        <DropdownMenuContent align="end" className="w-40">
                           <DropdownMenuItem 
                             onClick={() => handleEditAssignment(assignment)}
                             className="text-sm cursor-pointer"
@@ -284,6 +361,18 @@ export default function TagAssignmentsPage() {
                             <Pencil className="mr-2 h-3.5 w-3.5" />
                             Edit
                           </DropdownMenuItem>
+                          {assignment.isMandatory && (
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                setSelectedAssignment(assignment);
+                                setScheduleDialogOpen(true);
+                              }}
+                              className="text-sm cursor-pointer"
+                            >
+                              <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                              Day Schedule
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem 
                             onClick={() => handleDeleteAssignment(assignment.id)}
                             className="text-sm text-red-600 focus:text-red-600 cursor-pointer"
@@ -295,7 +384,8 @@ export default function TagAssignmentsPage() {
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                ))}
+                )}
+                )}
               </TableBody>
             </Table>
           )}
@@ -377,6 +467,13 @@ export default function TagAssignmentsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Day Schedule Dialog */}
+      <DayScheduleDialog
+        open={scheduleDialogOpen}
+        onOpenChange={setScheduleDialogOpen}
+        assignment={selectedAssignment}
+      />
     </div>
   );
 }

@@ -163,6 +163,25 @@ export async function GET(request: NextRequest) {
       logsByEmployee.set(log.employeeId, [...existingLogs, log])
     })
 
+    // Fetch all day-of-week requirements for the query date
+    const queryDayOfWeek = queryStartDate.getDay() // 0=Sunday, 1=Monday, ..., 6=Saturday
+    const allDayRequirements = await prisma.tagDayRequirement.findMany({
+      where: {
+        dayOfWeek: queryDayOfWeek,
+        isRequired: true,
+        employeeId: {
+          in: allEmployees.map(e => e.id),
+        },
+      },
+    })
+
+    // Group requirements by employee
+    const requirementsByEmployee = new Map<number, typeof allDayRequirements>()
+    allDayRequirements.forEach(req => {
+      const existing = requirementsByEmployee.get(req.employeeId) || []
+      requirementsByEmployee.set(req.employeeId, [...existing, req])
+    })
+
     // Combine data
     const employeeSubmissionStatus = allEmployees.map(employee => {
       const logs = logsByEmployee.get(employee.id) || []
@@ -186,8 +205,20 @@ export async function GET(request: NextRequest) {
           isMandatory: assignment.isMandatory,
         }))
       
-      // Check if any mandatory tags are missing
-      const missingMandatoryTags = missingTags.filter(tag => tag.isMandatory)
+      // Check date-specific requirements for this employee and date
+      const dateRequirements = requirementsByEmployee.get(employee.id) || []
+
+      // Determine which mandatory tags are actually missing
+      let missingMandatoryTags
+      if (dateRequirements.length > 0) {
+        // Use date-specific requirements
+        const requiredTagIds = new Set(dateRequirements.map((req: any) => req.tagId))
+        missingMandatoryTags = missingTags.filter(tag => requiredTagIds.has(tag.id))
+      } else {
+        // Fall back to general mandatory tags
+        missingMandatoryTags = missingTags.filter(tag => tag.isMandatory)
+      }
+      
       const hasMissingMandatoryTags = missingMandatoryTags.length > 0
       
       return {

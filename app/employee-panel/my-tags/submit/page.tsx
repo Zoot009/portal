@@ -135,6 +135,23 @@ export default function SubmitTagsPage() {
     enabled: !!employeeData?.data?.id
   })
 
+  // Fetch day requirements for this employee
+  const { data: dayRequirementsData } = useQuery({
+    queryKey: ['day-requirements', employeeData?.data?.id],
+    queryFn: async () => {
+      const employeeId = employeeData?.data?.id
+      if (!employeeId) throw new Error('No employee ID')
+      
+      const response = await fetch(`/api/admin/tag-calendar?employeeId=${employeeId}`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch day requirements')
+      }
+      const result = await response.json()
+      return result.data || result.requirements || []
+    },
+    enabled: !!employeeData?.data?.id
+  })
+
   // Check submission status for the selected date
   const { data: submissionStatusData, isLoading: submissionLoading, refetch: refetchSubmission } = useQuery({
     queryKey: ['submission-status', employeeData?.data?.id, date],
@@ -152,7 +169,7 @@ export default function SubmitTagsPage() {
     enabled: !!employeeData?.data?.id && !!date
   })
 
-  const assignedTags: AssignedTag[] = assignedTagsData?.assignments || []
+  const assignedTags: AssignedTag[] = assignedTagsData?.data || assignedTagsData?.assignments || []
   
   // Debug: Log assigned tags
   useEffect(() => {
@@ -206,13 +223,42 @@ export default function SubmitTagsPage() {
       return
     }
 
-    // Check mandatory tags
+    // Check mandatory tags with day-of-week consideration
+    const dayOfWeek = selectedDate.getDay() // 0=Sunday, 1=Monday, ..., 6=Saturday
+    
     const mandatoryTags = assignedTags.filter(a => a.isMandatory)
     const submittedTagIds = tagEntries
       .filter(e => e.count && parseInt(e.count) > 0)
       .map(e => parseInt(e.tagId))
     
-    const missingMandatory = mandatoryTags.filter(mt => !submittedTagIds.includes(mt.tag.id))
+    // Get tags with day schedules and check which are required today
+    const requiredTodayTagIds = new Set(
+      dayRequirementsData
+        ?.filter((req: any) => req.dayOfWeek === dayOfWeek && req.isRequired)
+        ?.map((req: any) => req.tagId) || []
+    )
+    
+    // Get all tags that have any day schedule configured
+    const tagsWithDaySchedule = new Set(
+      dayRequirementsData?.map((req: any) => req.tagId) || []
+    )
+    
+    // Filter missing mandatory tags considering day schedules
+    const missingMandatory = mandatoryTags.filter(mt => {
+      // Skip if already submitted
+      if (submittedTagIds.includes(mt.tag.id)) {
+        return false
+      }
+      
+      // If this tag has a day schedule configured
+      if (tagsWithDaySchedule.has(mt.tag.id)) {
+        // Only require it if it's required TODAY
+        return requiredTodayTagIds.has(mt.tag.id)
+      } else {
+        // No day schedule = always required if mandatory
+        return true
+      }
+    })
     
     if (missingMandatory.length > 0) {
       const missingNames = missingMandatory.map(mt => mt.tag.tagName).join(', ')
@@ -466,6 +512,16 @@ export default function SubmitTagsPage() {
                 const totalTime = entry.count && parseInt(entry.count) > 0 
                   ? parseInt(entry.count) * assignment.tag.timeMinutes
                   : 0
+
+                // Get day requirements for this tag
+                const tagRequirements = dayRequirementsData?.filter(
+                  (req: any) => req.tagId === assignment.tag.id && req.isRequired
+                ) || []
+                
+                const requiredDays = tagRequirements.map((req: any) => {
+                  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+                  return dayNames[req.dayOfWeek]
+                })
                 
                 return (
                   <div 
@@ -489,6 +545,20 @@ export default function SubmitTagsPage() {
                       <p className="text-xs text-muted-foreground">
                         {assignment.tag.timeMinutes} minutes per count
                       </p>
+                      {assignment.isMandatory && requiredDays.length > 0 && (
+                        <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs text-muted-foreground">Required on:</span>
+                          {requiredDays.map((day: string, idx: number) => (
+                            <Badge 
+                              key={idx} 
+                              variant="secondary" 
+                              className="text-[10px] px-1.5 py-0 h-4 bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-0"
+                            >
+                              {day}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     {/* Count and Time - Better Aligned */}

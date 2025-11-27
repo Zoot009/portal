@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { awardPoints, POINT_VALUES } from '@/lib/gamification'
 
 export async function POST(request: NextRequest) {
   try {
@@ -365,45 +364,8 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Helper function to award points for attendance records
+// Helper function to award points for attendance records (DISABLED)
 async function awardAttendancePoints(records: any[]) {
-  for (const record of records) {
-    try {
-      if (record.status === 'PRESENT') {
-        // Award points for being present
-        await awardPoints({
-          employeeId: record.employeeId,
-          points: POINT_VALUES.ATTENDANCE_PRESENT,
-          type: 'earned',
-          description: 'Daily attendance',
-          reference: `attendance:${record.id}`
-        })
-
-        // Bonus for early check-in (before 9 AM)
-        if (record.checkInTime) {
-          const checkInHour = new Date(record.checkInTime).getHours()
-          if (checkInHour < 9) {
-            await awardPoints({
-              employeeId: record.employeeId,
-              points: POINT_VALUES.EARLY_CHECKIN,
-              type: 'bonus',
-              description: 'Early check-in bonus',
-              reference: `attendance:${record.id}`
-            })
-          }
-        }
-      } else if (record.status === 'ABSENT') {
-        // Penalty for absence
-        await awardPoints({
-          employeeId: record.employeeId,
-          points: POINT_VALUES.ABSENCE_PENALTY,
-          type: 'penalty',
-          description: 'Absence penalty',
-          reference: `attendance:${record.id}`
-        })
-      }
-    } catch (error) {
-      console.error(`Error awarding points for attendance record ${record.id}:`, error)
-    }
-  }
+  // Gamification features have been disabled
+  return null;
 }
