@@ -56,6 +56,11 @@ const data = {
       icon: Home,
       isActive: true,
     },
+     {
+      title: "PMS Analytics",
+      url: "/dashboard/member-analytics", 
+      icon: TrendingUp,
+    },
     {
       title: "Employees",
       url: "/employees",
@@ -109,6 +114,7 @@ const data = {
         },
       ],
     },
+   
     {
       title: "Teams",
       url: "/teams",
