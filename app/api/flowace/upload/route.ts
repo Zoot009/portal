@@ -339,9 +339,23 @@ function extractCodeFromEmail(email: string): string {
   return email.split('@')[0].toUpperCase()
 }
 
-// Helper function to award points based on productivity (DISABLED)
+// Helper function to award points based on productivity
 async function awardProductivityPoints(records: any[]) {
-  // Gamification features have been disabled
-  return null;
+  try {
+    const { checkAndAwardAchievements } = await import('@/lib/gamification-utils')
+    
+    // Check achievements for employees with high productivity
+    const highPerformers = records.filter(record => 
+      record.productivityPercentage && record.productivityPercentage > 80
+    )
+    
+    for (const performer of highPerformers) {
+      if (performer.employeeId) {
+        await checkAndAwardAchievements(performer.employeeId)
+      }
+    }
+  } catch (error) {
+    console.error('Error awarding productivity points:', error)
+  }
 }
 

@@ -364,8 +364,17 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Helper function to award points for attendance records (DISABLED)
+// Helper function to award points for attendance records
 async function awardAttendancePoints(records: any[]) {
-  // Gamification features have been disabled
-  return null;
+  try {
+    const { awardAttendancePoints: awardPoints } = await import('@/lib/gamification-utils')
+    
+    for (const record of records) {
+      if (record.employeeId && (record.status === 'PRESENT' || record.status === 'WFH_APPROVED')) {
+        await awardPoints(record.employeeId, record)
+      }
+    }
+  } catch (error) {
+    console.error('Error awarding attendance points:', error)
+  }
 }

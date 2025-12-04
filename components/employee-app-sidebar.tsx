@@ -85,6 +85,24 @@ const data = {
       title: "My Rewards",
       url: "/employee-panel/gamification",
       icon: Trophy,
+      items: [
+        {
+          title: "Dashboard",
+          url: "/employee-panel/gamification",
+        },
+        {
+          title: "Achievements",
+          url: "/employee-panel/gamification?tab=achievements",
+        },
+        {
+          title: "Leaderboard",
+          url: "/employee-panel/gamification?tab=leaderboard",
+        },
+        {
+          title: "Rewards",
+          url: "/employee-panel/gamification?tab=rewards",
+        },
+      ],
     },
   ],
   navSecondary: [

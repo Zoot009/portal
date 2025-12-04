@@ -237,10 +237,19 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Helper function to award points for tag submissions (DISABLED - gamification removed)
+// Helper function to award points for tag submissions
 async function awardTagSubmissionPoints(employeeId: number, logs: any[], submissionDate: Date, submissionStatus: any) {
-  // Gamification features have been disabled
-  return null;
+  try {
+    const { awardWorkLogPoints, checkAndAwardAchievements } = await import('@/lib/gamification-utils')
+    
+    // Award points for work log submission
+    await awardWorkLogPoints(employeeId, logs, submissionDate)
+    
+    // Check and award any achievements
+    await checkAndAwardAchievements(employeeId)
+  } catch (error) {
+    console.error('Error awarding work log points:', error)
+  }
 }
 
 // Helper function to create warning and check if automatic penalty should be created
