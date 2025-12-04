@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
+import { getCurrentPayCycle, getPayCycleByOffset } from '@/lib/pay-cycle-utils'
 
 const prisma = new PrismaClient()
 
@@ -11,19 +12,30 @@ export async function GET(request: NextRequest) {
 
     const now = new Date()
     let startDate = new Date()
+    let endDate = new Date()
 
     switch (period) {
       case 'day':
         startDate.setHours(0, 0, 0, 0)
+        endDate = new Date(now)
+        endDate.setHours(23, 59, 59, 999)
         break
       case 'week':
         startDate.setDate(now.getDate() - 7)
+        endDate = new Date(now)
         break
       case 'month':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+        // Use pay cycle instead of calendar month
+        const paymentCycle = getCurrentPayCycle(now)
+        startDate = paymentCycle.start
+        endDate = paymentCycle.end
         break
       case 'year':
         startDate = new Date(now.getFullYear(), 0, 1)
+        endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999)
+        break
+      default:
+        endDate = new Date(now)
         break
     }
 
@@ -32,7 +44,7 @@ export async function GET(request: NextRequest) {
       where: {
         date: {
           gte: startDate,
-          lte: now,
+          lte: endDate,
         },
       },
     })
@@ -56,7 +68,7 @@ export async function GET(request: NextRequest) {
       where: {
         requestedAt: {
           gte: startDate,
-          lte: now,
+          lte: endDate,
         },
       },
       _count: true,
@@ -67,7 +79,7 @@ export async function GET(request: NextRequest) {
       where: {
         requestedAt: {
           gte: startDate,
-          lte: now,
+          lte: endDate,
         },
       },
       _count: true,
@@ -79,7 +91,7 @@ export async function GET(request: NextRequest) {
       where: {
         logDate: {
           gte: startDate,
-          lte: now,
+          lte: endDate,
         },
       },
       _sum: {
@@ -94,7 +106,7 @@ export async function GET(request: NextRequest) {
       where: {
         logDate: {
           gte: startDate,
-          lte: now,
+          lte: endDate,
         },
       },
       _sum: {
@@ -127,7 +139,7 @@ export async function GET(request: NextRequest) {
       where: {
         logDate: {
           gte: startDate,
-          lte: now,
+          lte: endDate,
         },
       },
       _sum: {
@@ -164,7 +176,7 @@ export async function GET(request: NextRequest) {
       where: {
         warningDate: {
           gte: startDate,
-          lte: now,
+          lte: endDate,
         },
       },
       _count: true,
@@ -175,7 +187,7 @@ export async function GET(request: NextRequest) {
       where: {
         warningDate: {
           gte: startDate,
-          lte: now,
+          lte: endDate,
         },
       },
       _count: true,
@@ -187,7 +199,7 @@ export async function GET(request: NextRequest) {
       where: {
         penaltyDate: {
           gte: startDate,
-          lte: now,
+          lte: endDate,
         },
       },
       _sum: {

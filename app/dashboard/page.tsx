@@ -160,7 +160,7 @@ export default function DashboardPage() {
               {stats?.work?.recentLogs ? new Set(stats.work.recentLogs.map((log: any) => log.employeeId)).size : 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              {stats?.work?.recentLogs?.length || 0} total entries this month
+              {stats?.work?.recentLogs?.length || 0} total entries this pay cycle
             </p>
           </CardContent>
         </Card>
@@ -257,7 +257,7 @@ export default function DashboardPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Total Work Hours</span>
-                <span className="text-sm font-medium">{stats?.work?.totalHoursThisMonth || 0}h</span>
+                <span className="text-sm font-medium">{stats?.work?.totalHoursThisCycle || 0}h</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Pending Issues</span>

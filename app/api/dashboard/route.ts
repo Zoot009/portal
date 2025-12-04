@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
+import { getCurrentPayCycle } from '@/lib/pay-cycle-utils'
 
 const prisma = new PrismaClient()
 
@@ -12,8 +13,8 @@ export async function GET(request: NextRequest) {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
-    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+    // Use pay cycle instead of calendar month
+    const { start: startOfMonth, end: endOfMonth } = getCurrentPayCycle(today)
 
     // Get employee counts
     const totalEmployees = await prisma.employee.count()
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
     const pendingLeaves = await prisma.leaveRequest.count({
       where: { status: 'PENDING' },
     })
-    const approvedLeavesThisMonth = await prisma.leaveRequest.count({
+    const approvedLeavesThisCycle = await prisma.leaveRequest.count({
       where: {
         status: 'APPROVED',
         startDate: {
@@ -143,15 +144,15 @@ export async function GET(request: NextRequest) {
         attendance: attendanceStats,
         leaves: {
           pending: pendingLeaves,
-          approvedThisMonth: approvedLeavesThisMonth,
+          approvedThisCycle: approvedLeavesThisCycle,
         },
         tags: {
           active: activeTags,
           totalAssignments,
         },
         work: {
-          totalMinutesThisMonth: totalWorkHours._sum.totalMinutes || 0,
-          totalHoursThisMonth: Math.round((totalWorkHours._sum.totalMinutes || 0) / 60),
+          totalMinutesThisCycle: totalWorkHours._sum.totalMinutes || 0,
+          totalHoursThisCycle: Math.round((totalWorkHours._sum.totalMinutes || 0) / 60),
           recentLogs,
         },
         issues: {

@@ -4,8 +4,9 @@ import { RoleGuard } from "@/components/role-guard"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { CalendarCheck, FileText, Tags, AlertCircle, Clock, TrendingUp, Loader2, Coffee } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
-import { format, startOfMonth, endOfMonth } from "date-fns"
+import { format } from "date-fns"
 import Link from "next/link"
+import { getCurrentPayCycle, formatPayCyclePeriod, isDateInPayCycle } from "@/lib/pay-cycle-utils"
 
 export default function EmployeeDashboardPage() {
   // Fetch employee data
@@ -60,16 +61,17 @@ export default function EmployeeDashboardPage() {
   const issues = issuesData?.data || []
   const logs = logsData?.data || []
 
-  // This month's attendance
+  // Current pay cycle attendance
   const today = new Date()
-  const monthStart = startOfMonth(today)
-  const monthEnd = endOfMonth(today)
-  const monthStartStr = format(monthStart, 'yyyy-MM-dd')
-  const monthEndStr = format(monthEnd, 'yyyy-MM-dd')
+  const { start: cycleStart, end: cycleEnd } = getCurrentPayCycle(today)
+  const cycleStartStr = format(cycleStart, 'yyyy-MM-dd')
+  const cycleEndStr = format(cycleEnd, 'yyyy-MM-dd')
+  const cyclePeriod = formatPayCyclePeriod(cycleStart, cycleEnd)
 
-  const thisMonthAttendance = attendanceRecords.filter((record: any) => 
-    record.date >= monthStartStr && record.date <= monthEndStr
-  )
+  const thisMonthAttendance = attendanceRecords.filter((record: any) => {
+    const recordDate = new Date(record.date + 'T00:00:00')
+    return isDateInPayCycle(recordDate, cycleStart, cycleEnd)
+  })
 
   const presentDays = thisMonthAttendance.filter((record: any) => 
     record.status === 'PRESENT' || record.status === 'WFH_APPROVED'
@@ -178,10 +180,10 @@ export default function EmployeeDashboardPage() {
   const pendingIssues = issues.filter((issue: any) => issue.issueStatus.toLowerCase() === 'pending').length
   const resolvedIssues = issues.filter((issue: any) => issue.issueStatus.toLowerCase() === 'resolved').length
 
-  // Logs this month
+  // Logs in current pay cycle
   const thisMonthLogs = logs.filter((log: any) => {
     const logDate = new Date(log.date)
-    return logDate >= monthStart && logDate <= monthEnd
+    return isDateInPayCycle(logDate, cycleStart, cycleEnd)
   })
 
   // Recent 5 attendance records
@@ -230,6 +232,7 @@ export default function EmployeeDashboardPage() {
                 <p className="text-xs text-muted-foreground">
                   {attendanceRate}% attendance rate
                 </p>
+                
               </>
             )}
           </CardContent>
@@ -248,6 +251,8 @@ export default function EmployeeDashboardPage() {
                 <div className="text-2xl font-bold">{formatHoursToTime(totalWorkHours)}</div>
                 <p className="text-xs text-muted-foreground">
                   This month
+
+
                 </p>
               </>
             )}
@@ -267,6 +272,8 @@ export default function EmployeeDashboardPage() {
                 <div className="text-2xl font-bold">{thisMonthLogs.length}</div>
                 <p className="text-xs text-muted-foreground">
                   This month
+
+
                 </p>
               </>
             )}
@@ -352,7 +359,7 @@ export default function EmployeeDashboardPage() {
                   <div key={i} className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium">{tag.name}</p>
-                      <p className="text-xs text-muted-foreground">{tag.count} logs this month</p>
+                      <p className="text-xs text-muted-foreground">{tag.count} logs current pay cycle</p>
                     </div>
                     <div className="text-sm font-medium">{tag.time} min</div>
                   </div>
