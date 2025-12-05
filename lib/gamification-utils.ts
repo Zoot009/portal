@@ -23,8 +23,39 @@ const POINT_VALUES: PointAwardConfig = {
   PUNCTUALITY_BONUS: 12
 }
 
+// Punctuality criteria
+const PUNCTUALITY_CRITERIA = {
+  checkIn: { start: { hour: 10, minute: 0 }, end: { hour: 10, minute: 30 } }, // 10:00-10:30 AM
+  checkOut: { start: { hour: 19, minute: 0 }, end: { hour: 19, minute: 30 } }, // 7:00-7:30 PM
+  pointsPerDay: 15
+}
+
+// Helper function to check punctuality
+function isPunctualDay(checkInTime: Date | null, checkOutTime: Date | null): boolean {
+  if (!checkInTime || !checkOutTime) return false
+  
+  // Check-in time
+  const checkInHour = checkInTime.getUTCHours()
+  const checkInMinute = checkInTime.getUTCMinutes()
+  const checkInInMinutes = checkInHour * 60 + checkInMinute
+  const checkInStart = PUNCTUALITY_CRITERIA.checkIn.start.hour * 60 + PUNCTUALITY_CRITERIA.checkIn.start.minute
+  const checkInEnd = PUNCTUALITY_CRITERIA.checkIn.end.hour * 60 + PUNCTUALITY_CRITERIA.checkIn.end.minute
+  
+  // Check-out time
+  const checkOutHour = checkOutTime.getUTCHours()
+  const checkOutMinute = checkOutTime.getUTCMinutes()
+  const checkOutInMinutes = checkOutHour * 60 + checkOutMinute
+  const checkOutStart = PUNCTUALITY_CRITERIA.checkOut.start.hour * 60 + PUNCTUALITY_CRITERIA.checkOut.start.minute
+  const checkOutEnd = PUNCTUALITY_CRITERIA.checkOut.end.hour * 60 + PUNCTUALITY_CRITERIA.checkOut.end.minute
+  
+  const punctualCheckIn = checkInInMinutes >= checkInStart && checkInInMinutes <= checkInEnd
+  const punctualCheckOut = checkOutInMinutes >= checkOutStart && checkOutInMinutes <= checkOutEnd
+  
+  return punctualCheckIn && punctualCheckOut
+}
+
 export async function awardAttendancePoints(employeeId: number, attendanceRecord: any) {
-  const points: { type: PointType; points: number; reason: string; relatedId?: number }[] = []
+  const points: { type: PointType; points: number; reason: string; relatedId?: number; relatedType?: string }[] = []
 
   // Daily attendance points
   if (attendanceRecord.status === 'PRESENT' || attendanceRecord.status === 'WFH_APPROVED') {
@@ -32,11 +63,12 @@ export async function awardAttendancePoints(employeeId: number, attendanceRecord
       type: 'ATTENDANCE_BONUS',
       points: POINT_VALUES.DAILY_ATTENDANCE,
       reason: 'Daily attendance bonus',
-      relatedId: attendanceRecord.id
+      relatedId: attendanceRecord.id,
+      relatedType: 'attendance'
     })
   }
 
-  // Early check-in bonus (before 9:30 AM)
+  // Early check-in bonus (before 9:30 AM) - existing logic
   if (attendanceRecord.checkInTime) {
     const checkInTime = new Date(attendanceRecord.checkInTime)
     const checkInHour = checkInTime.getUTCHours()
@@ -47,8 +79,36 @@ export async function awardAttendancePoints(employeeId: number, attendanceRecord
         type: 'PUNCTUALITY_BONUS',
         points: POINT_VALUES.EARLY_CHECKIN,
         reason: 'Early check-in bonus',
-        relatedId: attendanceRecord.id
+        relatedId: attendanceRecord.id,
+        relatedType: 'attendance'
       })
+    }
+  }
+
+  // NEW: Punctuality Master bonus (10:00-10:30 check-in AND 7:00-7:30 check-out)
+  if (attendanceRecord.checkInTime && attendanceRecord.checkOutTime) {
+    const isPunctual = isPunctualDay(attendanceRecord.checkInTime, attendanceRecord.checkOutTime)
+    
+    if (isPunctual) {
+      // Check if punctuality points already awarded for this day
+      const existingPunctualityPoints = await prisma.gamificationPoints.findFirst({
+        where: {
+          employeeId,
+          pointType: 'PUNCTUALITY_BONUS',
+          relatedId: attendanceRecord.id,
+          relatedType: 'punctuality_daily'
+        }
+      })
+      
+      if (!existingPunctualityPoints) {
+        points.push({
+          type: 'PUNCTUALITY_BONUS',
+          points: PUNCTUALITY_CRITERIA.pointsPerDay,
+          reason: 'Punctuality Master bonus (10:00-10:30 check-in, 7:00-7:30 check-out)',
+          relatedId: attendanceRecord.id,
+          relatedType: 'punctuality_daily'
+        })
+      }
     }
   }
 
@@ -59,7 +119,8 @@ export async function awardAttendancePoints(employeeId: number, attendanceRecord
       type: 'OVERTIME_BONUS',
       points: overtimePoints,
       reason: `Overtime bonus (${attendanceRecord.overtime} hours)`,
-      relatedId: attendanceRecord.id
+      relatedId: attendanceRecord.id,
+      relatedType: 'attendance'
     })
   }
 
@@ -74,7 +135,7 @@ export async function awardAttendancePoints(employeeId: number, attendanceRecord
             pointType: point.type,
             reason: point.reason,
             relatedId: point.relatedId,
-            relatedType: 'attendance'
+            relatedType: point.relatedType || 'attendance'
           }
         })
       )
@@ -181,6 +242,12 @@ export async function checkAndAwardAchievements(employeeId: number) {
       case 'Points Collector':
         progress = await checkPointsCollectorAchievement(employeeId)
         isCompleted = progress >= 100
+        break
+      
+      case 'Punctuality Master':
+        const punctualityResult = await checkPunctualityAchievement(employeeId)
+        progress = punctualityResult.progress
+        isCompleted = punctualityResult.isCompleted
         break
     }
 
@@ -320,6 +387,36 @@ async function checkPointsCollectorAchievement(employeeId: number): Promise<numb
   const targetPoints = 500 // 500 total points
   const currentPoints = totalPoints._sum.points || 0
   return Math.min(100, (currentPoints / targetPoints) * 100)
+}
+
+async function checkPunctualityAchievement(employeeId: number): Promise<{ progress: number, isCompleted: boolean }> {
+  try {
+    // Get punctuality points from last 30 days
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    
+    const punctualityPoints = await prisma.gamificationPoints.count({
+      where: {
+        employeeId,
+        pointType: 'PUNCTUALITY_BONUS',
+        relatedType: 'punctuality_daily',
+        earnedAt: {
+          gte: thirtyDaysAgo
+        }
+      }
+    })
+    
+    // Achievement criteria: 10 punctual days in 30 days
+    const targetDays = 10
+    const progress = Math.min(100, (punctualityPoints / targetDays) * 100)
+    const isCompleted = punctualityPoints >= targetDays
+    
+    return { progress, isCompleted }
+    
+  } catch (error) {
+    console.error('Error checking punctuality achievement:', error)
+    return { progress: 0, isCompleted: false }
+  }
 }
 
 export async function updateLeaderboard(period: 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL') {
