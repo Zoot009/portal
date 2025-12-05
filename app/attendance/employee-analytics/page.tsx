@@ -142,7 +142,8 @@ export default function EmployeeAnalyticsPage() {
           records: [],
           totalHours: 0,
           presentDays: 0,
-          absentDays: 0
+          absentDays: 0,
+          daysWithHours: 0
         })
       }
       
@@ -160,6 +161,11 @@ export default function EmployeeAnalyticsPage() {
           record.overtime || 0
         )
         emp.totalHours += liveHours
+        
+        // Only count days that actually have working hours for average calculation
+        if (liveHours > 0) {
+          emp.daysWithHours++
+        }
       } else {
         emp.absentDays++
       }
@@ -168,7 +174,7 @@ export default function EmployeeAnalyticsPage() {
     return Array.from(employeeMap.values()).map(emp => {
       const totalRecords = emp.records.length
       const attendanceRate = totalRecords > 0 ? (emp.presentDays / totalRecords) * 100 : 0
-      const averageHoursPerDay = emp.presentDays > 0 ? emp.totalHours / emp.presentDays : 0
+      const averageHoursPerDay = emp.daysWithHours > 0 ? emp.totalHours / emp.daysWithHours : 0
       
       const sortedRecords = emp.records.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
       
