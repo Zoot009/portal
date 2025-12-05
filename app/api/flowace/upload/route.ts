@@ -342,7 +342,8 @@ function extractCodeFromEmail(email: string): string {
 // Helper function to award points based on productivity
 async function awardProductivityPoints(records: any[]) {
   try {
-    const { checkAndAwardAchievements } = await import('@/lib/gamification-utils')
+    // Gamification system disabled
+    // const { checkAndAwardAchievements } = await import('@/lib/gamification-utils')
     
     // Check achievements for employees with high productivity
     const highPerformers = records.filter(record => 
@@ -357,5 +358,9 @@ async function awardProductivityPoints(records: any[]) {
   } catch (error) {
     console.error('Error awarding productivity points:', error)
   }
+}
+
+function checkAndAwardAchievements(employeeId: any) {
+  throw new Error('Function not implemented.')
 }
 

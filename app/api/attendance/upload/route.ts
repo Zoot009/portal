@@ -367,11 +367,12 @@ export async function POST(request: NextRequest) {
 // Helper function to award points for attendance records
 async function awardAttendancePoints(records: any[]) {
   try {
-    const { awardAttendancePoints: awardPoints } = await import('@/lib/gamification-utils')
+    // Gamification system disabled
+    // const { awardAttendancePoints: awardPoints } = await import('@/lib/gamification-utils')
     
     for (const record of records) {
       if (record.employeeId && (record.status === 'PRESENT' || record.status === 'WFH_APPROVED')) {
-        await awardPoints(record.employeeId, record)
+        // await awardPoints(record.employeeId, record)
       }
     }
   } catch (error) {

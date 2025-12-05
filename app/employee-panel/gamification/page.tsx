@@ -82,7 +82,7 @@ export default function EmployeeGamificationPage() {
     switch (type) {
       case 'ATTENDANCE_BONUS': return <Calendar className="h-4 w-4" />
       case 'WORK_LOG_COMPLETION': return <Target className="h-4 w-4" />
-      case 'PUNCTUALITY_BONUS': return <Clock className="h-4 w-4" />
+      case 'EARLY_CHECKIN_BONUS': return <Clock className="h-4 w-4" />
       case 'ACHIEVEMENT_UNLOCK': return <Award className="h-4 w-4" />
       case 'OVERTIME_BONUS': return <Zap className="h-4 w-4" />
       default: return <Star className="h-4 w-4" />
@@ -93,7 +93,7 @@ export default function EmployeeGamificationPage() {
     switch (type) {
       case 'ATTENDANCE_BONUS': return 'bg-green-100 text-green-800'
       case 'WORK_LOG_COMPLETION': return 'bg-blue-100 text-blue-800'
-      case 'PUNCTUALITY_BONUS': return 'bg-purple-100 text-purple-800'
+      case 'EARLY_CHECKIN_BONUS': return 'bg-purple-100 text-purple-800'
       case 'ACHIEVEMENT_UNLOCK': return 'bg-yellow-100 text-yellow-800'
       case 'OVERTIME_BONUS': return 'bg-orange-100 text-orange-800'
       default: return 'bg-gray-100 text-gray-800'

@@ -175,37 +175,7 @@ const data = {
         },
       ],
     },
-    {
-      title: "Gamification",
-      url: "/admin/gamification",
-      icon: Trophy,
-      items: [
-        {
-          title: "Overview",
-          url: "/admin/gamification",
-        },
-        {
-          title: "Achievements",
-          url: "/admin/gamification/achievements",
-        },
-        {
-          title: "Rewards",
-          url: "/admin/gamification/rewards",
-        },
-        {
-          title: "Leaderboard",
-          url: "/admin/gamification/leaderboard",
-        },
-        {
-          title: "Coin Redemptions",
-          url: "/admin/gamification/redemptions",
-        },
-        {
-          title: "Employee Progress",
-          url: "/admin/gamification/employee-progress",
-        },
-      ],
-    },
+
     {
       title: "Admin Management",
       url: "/admin",

@@ -240,13 +240,14 @@ export async function POST(request: NextRequest) {
 // Helper function to award points for tag submissions
 async function awardTagSubmissionPoints(employeeId: number, logs: any[], submissionDate: Date, submissionStatus: any) {
   try {
-    const { awardWorkLogPoints, checkAndAwardAchievements } = await import('@/lib/gamification-utils')
+    // Gamification system disabled
+    // const { awardWorkLogPoints, checkAndAwardAchievements } = await import('@/lib/gamification-utils')
     
     // Award points for work log submission
-    await awardWorkLogPoints(employeeId, logs, submissionDate)
+    // await awardWorkLogPoints(employeeId, logs, submissionDate)
     
     // Check and award any achievements
-    await checkAndAwardAchievements(employeeId)
+    // await checkAndAwardAchievements(employeeId)
   } catch (error) {
     console.error('Error awarding work log points:', error)
   }

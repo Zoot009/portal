@@ -97,7 +97,7 @@ export default function AdminGamificationPage() {
     switch (type) {
       case 'ATTENDANCE_BONUS': return <Target className="h-4 w-4" />
       case 'WORK_LOG_COMPLETION': return <Activity className="h-4 w-4" />
-      case 'PUNCTUALITY_BONUS': return <Zap className="h-4 w-4" />
+      case 'EARLY_CHECKIN_BONUS': return <Zap className="h-4 w-4" />
       case 'ACHIEVEMENT_UNLOCK': return <Award className="h-4 w-4" />
       case 'OVERTIME_BONUS': return <TrendingUp className="h-4 w-4" />
       default: return <Star className="h-4 w-4" />
