@@ -12,10 +12,9 @@ export async function GET(request: NextRequest) {
 
     const whereClause: any = {}
 
-    // Filter by date if provided
+    // Filter by date if provided (prevent timezone issues)
     if (date) {
-      const selectedDate = new Date(date)
-      selectedDate.setHours(0, 0, 0, 0)
+      const selectedDate = new Date(date + 'T00:00:00.000Z')
       whereClause.breakDate = selectedDate
     }
 

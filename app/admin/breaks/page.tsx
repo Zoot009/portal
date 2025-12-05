@@ -60,6 +60,12 @@ export default function AdminBreaksPage() {
   const [deleteReason, setDeleteReason] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [exportDialogOpen, setExportDialogOpen] = useState(false)
+  const [exportDateRange, setExportDateRange] = useState({
+    startDate: '',
+    endDate: ''
+  })
+  const [isExporting, setIsExporting] = useState(false)
 
   const queryClient = useQueryClient()
 
@@ -261,6 +267,80 @@ export default function AdminBreaksPage() {
     })
   }
 
+  // Export functionality
+  const handleExportClick = () => {
+    // Set default date range (last 30 days to today)
+    const today = new Date()
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(today.getDate() - 30)
+    
+    setExportDateRange({
+      startDate: thirtyDaysAgo.toISOString().split('T')[0],
+      endDate: today.toISOString().split('T')[0]
+    })
+    setExportDialogOpen(true)
+  }
+
+  const handleExportConfirm = async () => {
+    if (!exportDateRange.startDate || !exportDateRange.endDate) {
+      toast.error('Please select both start and end dates')
+      return
+    }
+
+    if (new Date(exportDateRange.startDate) > new Date(exportDateRange.endDate)) {
+      toast.error('Start date must be before or equal to end date')
+      return
+    }
+
+    setIsExporting(true)
+    try {
+      const response = await fetch('/api/admin/breaks/export', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          startDate: exportDateRange.startDate,
+          endDate: exportDateRange.endDate
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to export data')
+      }
+
+      // Get filename from response headers
+      const contentDisposition = response.headers.get('content-disposition')
+      let filename = 'breaks_export.csv'
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/)
+        if (filenameMatch) {
+          filename = filenameMatch[1]
+        }
+      }
+
+      // Download the file
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.style.display = 'none'
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      toast.success('Breaks data exported successfully!')
+      setExportDialogOpen(false)
+    } catch (error) {
+      console.error('Export error:', error)
+      toast.error('Failed to export breaks data')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   // Calculate statistics
   const totalBreaks = filteredBreaks.length
   const activeBreaks = filteredBreaks.filter((b: BreakSession) => b.status === 'ACTIVE').length
@@ -286,7 +366,7 @@ export default function AdminBreaksPage() {
           <h2 className="text-3xl font-bold tracking-tight">Break Management</h2>
           <p className="text-muted-foreground">Monitor and manage employee break sessions</p>
         </div>
-        <Button>
+        <Button onClick={handleExportClick}>
           <Download className="mr-2 h-4 w-4" />
           Export Data
         </Button>
@@ -835,6 +915,83 @@ export default function AdminBreaksPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Export Date Range Dialog */}
+      <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Export Breaks Data</DialogTitle>
+            <DialogDescription>
+              Select the date range for exporting breaks data to CSV format.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="start-date" className="text-right">
+                From Date
+              </Label>
+              <Input
+                id="start-date"
+                type="date"
+                value={exportDateRange.startDate}
+                onChange={(e) => setExportDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="end-date" className="text-right">
+                To Date
+              </Label>
+              <Input
+                id="end-date"
+                type="date"
+                value={exportDateRange.endDate}
+                onChange={(e) => setExportDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                className="col-span-3"
+              />
+            </div>
+            
+            {exportDateRange.startDate && exportDateRange.endDate && (
+              <div className="rounded-lg bg-muted p-3 col-span-4">
+                <p className="text-sm font-medium">Export Summary:</p>
+                <p className="text-sm text-muted-foreground">
+                  Date range: {new Date(exportDateRange.startDate).toLocaleDateString()} to {new Date(exportDateRange.endDate).toLocaleDateString()}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Format: CSV file with all break records in the selected date range
+                </p>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setExportDialogOpen(false)}
+              disabled={isExporting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleExportConfirm}
+              disabled={isExporting || !exportDateRange.startDate || !exportDateRange.endDate}
+            >
+              {isExporting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export CSV
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
