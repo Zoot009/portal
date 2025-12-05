@@ -50,30 +50,22 @@ export async function POST(request: NextRequest) {
       ]
     })
 
-    // Helper function to format time
+    // Helper function to format time (Excel-friendly HH:MM:SS format)
     const formatTime = (date: Date | null): string => {
       if (!date) return '-'
       try {
-        return date.toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true,
-          timeZone: 'UTC'
-        })
+        // Use ISO time format (HH:MM:SS) which Excel handles consistently
+        return date.toISOString().substring(11, 19)
       } catch {
         return '-'
       }
     }
 
-    // Helper function to format date
+    // Helper function to format date (Excel-friendly YYYY-MM-DD format)
     const formatDate = (date: Date): string => {
       try {
-        return date.toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          timeZone: 'UTC'
-        })
+        // Use ISO date format (YYYY-MM-DD) which Excel handles perfectly
+        return date.toISOString().split('T')[0]
       } catch {
         return '-'
       }
@@ -98,31 +90,23 @@ export async function POST(request: NextRequest) {
       return 'Unknown'
     }
 
-    // Generate CSV content
+    // Generate CSV content with only requested columns
     const headers = [
       'Date',
       'Employee Code', 
       'Employee Name',
-      'Department',
-      'Break In Time',
-      'Break Out Time', 
-      'Duration (Minutes)',
-      'Duration (Formatted)',
-      'Status',
-      'Has Been Edited'
+      'Break In',
+      'Break Out',
+      'Duration (Formatted)'
     ]
 
     const csvRows = breaks.map(breakSession => [
       formatDate(breakSession.breakDate),
       breakSession.employee.employeeCode,
       breakSession.employee.name,
-      breakSession.employee.department || 'Not Specified',
       formatTime(breakSession.breakInTime),
       formatTime(breakSession.breakOutTime),
-      breakSession.breakDuration?.toString() || '0',
-      formatDuration(breakSession.breakDuration || 0),
-      getBreakStatus(breakSession),
-      breakSession.hasBeenEdited ? 'Yes' : 'No'
+      formatDuration(breakSession.breakDuration || 0)
     ])
 
     // Combine headers and data
