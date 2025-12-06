@@ -2,7 +2,7 @@
 
 import { RoleGuard } from "@/components/role-guard"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { CalendarCheck, FileText, Tags, AlertCircle, Clock, TrendingUp, Loader2, Coffee, Trophy } from "lucide-react"
+import { CalendarCheck, FileText, Tags, AlertCircle, Clock, TrendingUp, Loader2, Coffee } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { format } from "date-fns"
 import Link from "next/link"
@@ -400,12 +400,6 @@ export default function EmployeeDashboardPage() {
               <button className="w-full flex flex-col items-center gap-2 rounded-lg border p-4 hover:bg-accent transition-colors">
                 <CalendarCheck className="h-8 w-8" />
                 <span className="text-sm font-medium">Attendance</span>
-              </button>
-            </Link>
-            <Link href="/employee-panel/gamification">
-              <button className="w-full flex flex-col items-center gap-2 rounded-lg border p-4 hover:bg-accent transition-colors bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200">
-                <Trophy className="h-8 w-8 text-yellow-600" />
-                <span className="text-sm font-medium text-yellow-700">My Rewards</span>
               </button>
             </Link>
           </div>
