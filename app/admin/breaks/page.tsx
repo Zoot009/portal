@@ -15,6 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Coffee, Calendar, Clock, Search, Download, Users, Loader2, Edit, Save, MoreVertical, History, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 
 interface EditHistoryEntry {
   id: number
@@ -65,6 +66,8 @@ export default function AdminBreaksPage() {
     startDate: '',
     endDate: ''
   })
+  const [exportType, setExportType] = useState<'all' | 'individual'>('all')
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('')
   const [isExporting, setIsExporting] = useState(false)
 
   const queryClient = useQueryClient()
@@ -79,6 +82,16 @@ export default function AdminBreaksPage() {
       if (!response.ok) throw new Error('Failed to fetch breaks')
       return response.json()
     },
+  })
+
+  // Fetch employees for export selection
+  const { data: employeesData } = useQuery({
+    queryKey: ['employees-list'],
+    queryFn: async () => {
+      const response = await fetch('/api/employees')
+      if (!response.ok) throw new Error('Failed to fetch employees')
+      return response.json()
+    }
   })
 
   // Edit break mutation
@@ -292,18 +305,25 @@ export default function AdminBreaksPage() {
       return
     }
 
+    // Validate individual employee selection
+    if (exportType === 'individual' && !selectedEmployeeId) {
+      toast.error('Please select an employee for individual export')
+      return
+    }
+
     setIsExporting(true)
     try {
-      const response = await fetch('/api/admin/breaks/export', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          startDate: exportDateRange.startDate,
-          endDate: exportDateRange.endDate
-        })
+      const params = new URLSearchParams({
+        startDate: exportDateRange.startDate,
+        endDate: exportDateRange.endDate,
+        exportType: exportType
       })
+
+      if (exportType === 'individual' && selectedEmployeeId) {
+        params.append('employeeId', selectedEmployeeId)
+      }
+
+      const response = await fetch(`/api/admin/breaks/export?${params}`)
 
       if (!response.ok) {
         throw new Error('Failed to export data')
@@ -918,49 +938,111 @@ export default function AdminBreaksPage() {
 
       {/* Export Date Range Dialog */}
       <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
             <DialogTitle>Export Breaks Data</DialogTitle>
             <DialogDescription>
-              Select the date range for exporting breaks data to CSV format.
+              Select date range and export type for CSV format.
             </DialogDescription>
           </DialogHeader>
           
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="start-date" className="text-right">
-                From Date
-              </Label>
-              <Input
-                id="start-date"
-                type="date"
-                value={exportDateRange.startDate}
-                onChange={(e) => setExportDateRange(prev => ({ ...prev, startDate: e.target.value }))}
-                className="col-span-3"
-              />
+          <div className="space-y-4 py-2">
+            {/* Export Type Selection */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Export Type</Label>
+              <RadioGroup
+                value={exportType}
+                onValueChange={setExportType}
+                className="space-y-2"
+              >
+                <div className="flex items-center space-x-2 p-2 border rounded hover:bg-muted/50 dark:hover:bg-muted">
+                  <RadioGroupItem value="all" id="all-employees" />
+                  <Label htmlFor="all-employees" className="cursor-pointer text-sm">
+                    All Employees
+                  </Label>
+                </div>
+                
+                <div className="flex items-center space-x-2 p-2 border rounded hover:bg-muted/50 dark:hover:bg-muted">
+                  <RadioGroupItem value="individual" id="individual-employee" />
+                  <Label htmlFor="individual-employee" className="cursor-pointer text-sm">
+                    Individual Employee
+                  </Label>
+                </div>
+              </RadioGroup>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="end-date" className="text-right">
-                To Date
-              </Label>
-              <Input
-                id="end-date"
-                type="date"
-                value={exportDateRange.endDate}
-                onChange={(e) => setExportDateRange(prev => ({ ...prev, endDate: e.target.value }))}
-                className="col-span-3"
-              />
+
+            {/* Employee Selection */}
+            {exportType === 'individual' && (
+              <div className="space-y-2">
+                <Label htmlFor="employee-select" className="text-sm font-medium">Select Employee</Label>
+                <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose an employee..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employeesData?.data?.map((employee: any) => (
+                      <SelectItem key={employee.id} value={employee.id.toString()}>
+                        {employee.name} ({employee.employeeCode})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Date Range */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Date Range</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="start-date" className="text-xs text-muted-foreground">From</Label>
+                  <Input
+                    id="start-date"
+                    type="date"
+                    value={exportDateRange.startDate}
+                    onChange={(e) => setExportDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="end-date" className="text-xs text-muted-foreground">To</Label>
+                  <Input
+                    id="end-date"
+                    type="date"
+                    value={exportDateRange.endDate}
+                    onChange={(e) => setExportDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                  />
+                </div>
+              </div>
             </div>
             
+            {/* Export Summary */}
             {exportDateRange.startDate && exportDateRange.endDate && (
-              <div className="rounded-lg bg-muted p-3 col-span-4">
-                <p className="text-sm font-medium">Export Summary:</p>
-                <p className="text-sm text-muted-foreground">
-                  Date range: {new Date(exportDateRange.startDate).toLocaleDateString()} to {new Date(exportDateRange.endDate).toLocaleDateString()}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Format: CSV file with all break records in the selected date range
-                </p>
+              <div className="rounded bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-3">
+                <p className="font-medium text-blue-900 dark:text-blue-100 mb-2 text-sm">Export Summary</p>
+                <div className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
+                  <div className="flex justify-between">
+                    <span>Data Type:</span>
+                    <span>{exportType === 'all' ? 'All Employees' : 'Individual Employee'}</span>
+                  </div>
+                  {exportType === 'individual' && selectedEmployeeId && (
+                    <div className="flex justify-between">
+                      <span>Employee:</span>
+                      <span className="text-right">
+                        {employeesData?.data?.find((emp: any) => emp.id.toString() === selectedEmployeeId)?.name}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span>Date Range:</span>
+                    <span>
+                      {new Date(exportDateRange.startDate).toLocaleDateString()} to {new Date(exportDateRange.endDate).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Format:</span>
+                    <span>CSV file</span>
+                  </div>
+                </div>
               </div>
             )}
           </div>

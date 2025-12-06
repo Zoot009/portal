@@ -3,10 +3,13 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { startDate, endDate } = body
+    const { searchParams } = new URL(request.url)
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
+    const exportType = searchParams.get('exportType') || 'all'
+    const employeeId = searchParams.get('employeeId')
 
     if (!startDate || !endDate) {
       return NextResponse.json(
@@ -22,18 +25,28 @@ export async function POST(request: NextRequest) {
     console.log('Export date range:', { 
       startDate, 
       endDate, 
+      exportType,
+      employeeId,
       parsedStart: start.toISOString(), 
       parsedEnd: end.toISOString() 
     })
 
+    // Build where clause based on export type
+    const whereClause: any = {
+      breakDate: {
+        gte: start,
+        lte: end
+      }
+    }
+
+    // Add employee filter if individual export is selected
+    if (exportType === 'individual' && employeeId) {
+      whereClause.employeeId = parseInt(employeeId)
+    }
+
     // Fetch breaks data within date range
     const breaks = await prisma.break.findMany({
-      where: {
-        breakDate: {
-          gte: start,
-          lte: end
-        }
-      },
+      where: whereClause,
       include: {
         employee: {
           select: {
@@ -120,7 +133,17 @@ export async function POST(request: NextRequest) {
     // Generate filename with date range
     const startStr = start.toISOString().split('T')[0]
     const endStr = end.toISOString().split('T')[0]
-    const filename = `breaks_export_${startStr}_to_${endStr}.csv`
+    
+    let filename = 'breaks_export'
+    if (exportType === 'individual' && breaks.length > 0) {
+      const employee = breaks[0]?.employee
+      if (employee) {
+        filename = `breaks_${employee.employeeCode}_${employee.name.replace(/\s+/g, '_')}`
+      }
+    } else {
+      filename = 'breaks_all_employees'
+    }
+    filename += `_${startStr}_to_${endStr}.csv`
 
     // Return CSV data
     return new NextResponse(csvWithBOM, {
