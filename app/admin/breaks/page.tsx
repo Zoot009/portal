@@ -952,7 +952,7 @@ export default function AdminBreaksPage() {
               <Label className="text-sm font-medium">Export Type</Label>
               <RadioGroup
                 value={exportType}
-                onValueChange={setExportType}
+                onValueChange={(value) => setExportType(value as 'all' | 'individual')}
                 className="space-y-2"
               >
                 <div className="flex items-center space-x-2 p-2 border rounded hover:bg-muted/50 dark:hover:bg-muted">
