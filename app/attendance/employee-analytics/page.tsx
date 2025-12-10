@@ -20,6 +20,7 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { getCurrentPayCycle, getPayCycleByOffset, formatPayCyclePeriod } from '@/lib/pay-cycle-utils'
 
 interface EmployeeAnalytics {
   employeeId: number
@@ -40,6 +41,12 @@ export default function EmployeeAnalyticsPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [salaryCycleFilter, setSalaryCycleFilter] = useState('current')
   const [sortBy, setSortBy] = useState('presentDays')
+
+  // Calculate dynamic pay cycles
+  const currentCycle = getCurrentPayCycle()
+  const previousCycle = getPayCycleByOffset(-1)
+  const currentCycleLabel = formatPayCyclePeriod(currentCycle.start, currentCycle.end)
+  const previousCycleLabel = formatPayCyclePeriod(previousCycle.start, previousCycle.end)
   const [sortOrder, setSortOrder] = useState('desc')
   const [currentPage, setCurrentPage] = useState(1)
   const [recordsPerPage, setRecordsPerPage] = useState(10)
@@ -307,11 +314,12 @@ export default function EmployeeAnalyticsPage() {
                 setCurrentPage(1)
               }}>
                 <SelectTrigger className="w-52 h-10">
-                  <SelectValue placeholder="Current Cycle (6 Oct - 5 Nov)" />
+                  <SelectValue placeholder={`Current Cycle (${currentCycleLabel})`} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="current">Current Cycle (6 Oct - 5 Nov)</SelectItem>
-                  <SelectItem value="previous">Previous Cycle (6 Sep - 5 Oct)</SelectItem>
+                  <SelectItem value="all">All Cycles</SelectItem>
+                  <SelectItem value="current">Current Cycle ({currentCycleLabel})</SelectItem>
+                  <SelectItem value="previous">Previous Cycle ({previousCycleLabel})</SelectItem>
                 </SelectContent>
               </Select>
             </div>

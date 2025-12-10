@@ -13,7 +13,6 @@ import {
   Shield,
   ArrowLeft,
   Coffee,
-  Trophy,
   Award,
   Gift,
   TrendingUp,

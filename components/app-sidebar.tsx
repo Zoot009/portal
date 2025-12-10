@@ -20,7 +20,6 @@ import {
   Package,
   UserCircle,
   Coffee,
-  Trophy,
   Award,
   Gift,
   TrendingUp,

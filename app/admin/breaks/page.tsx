@@ -16,6 +16,7 @@ import { Coffee, Calendar, Clock, Search, Download, Users, Loader2, Edit, Save, 
 import { toast } from 'sonner'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { getCurrentPayCycle, getPayCycleByOffset, formatPayCyclePeriod } from '@/lib/pay-cycle-utils'
 
 interface EditHistoryEntry {
   id: number
@@ -48,7 +49,16 @@ interface BreakSession {
 
 export default function AdminBreaksPage() {
   const [searchTerm, setSearchTerm] = useState('')
+
+  // Calculate dynamic pay cycles
+  const currentCycle = getCurrentPayCycle()
+  const previousCycle = getPayCycleByOffset(-1)
+  const nextCycle = getPayCycleByOffset(1)
+  const currentCycleLabel = formatPayCyclePeriod(currentCycle.start, currentCycle.end)
+  const previousCycleLabel = formatPayCyclePeriod(previousCycle.start, previousCycle.end)
+  const nextCycleLabel = formatPayCyclePeriod(nextCycle.start, nextCycle.end)
   const [dateFilter, setDateFilter] = useState('')
+  const [salaryCycleFilter, setSalaryCycleFilter] = useState('current')
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -232,11 +242,38 @@ export default function AdminBreaksPage() {
 
   const allBreaks = breaksData?.data || []
 
-  // Filter breaks by search term
+  // Filter breaks by search term and salary cycle
   const filteredBreaks = allBreaks.filter((breakSession: BreakSession) => {
     const matchesSearch = breakSession.employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          breakSession.employee.employeeCode.toLowerCase().includes(searchTerm.toLowerCase())
-    return matchesSearch
+    
+    // Salary cycle filter
+    let matchesSalaryCycle = true
+    if (salaryCycleFilter !== 'all') {
+      const breakDate = new Date(breakSession.breakDate)
+      
+      if (salaryCycleFilter === 'current') {
+        // Use dynamic current cycle
+        const cycleStart = new Date(currentCycle.start)
+        const cycleEnd = new Date(currentCycle.end)
+        cycleEnd.setHours(23, 59, 59, 999)
+        matchesSalaryCycle = breakDate >= cycleStart && breakDate <= cycleEnd
+      } else if (salaryCycleFilter === 'previous') {
+        // Use dynamic previous cycle
+        const cycleStart = new Date(previousCycle.start)
+        const cycleEnd = new Date(previousCycle.end)
+        cycleEnd.setHours(23, 59, 59, 999)
+        matchesSalaryCycle = breakDate >= cycleStart && breakDate <= cycleEnd
+      } else if (salaryCycleFilter === 'next') {
+        // Use dynamic next cycle
+        const cycleStart = new Date(nextCycle.start)
+        const cycleEnd = new Date(nextCycle.end)
+        cycleEnd.setHours(23, 59, 59, 999)
+        matchesSalaryCycle = breakDate >= cycleStart && breakDate <= cycleEnd
+      }
+    }
+    
+    return matchesSearch && matchesSalaryCycle
   })
 
   // Pagination calculations
@@ -398,7 +435,7 @@ export default function AdminBreaksPage() {
           <CardTitle>Filters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Search Employee</label>
               <div className="flex items-center space-x-2">
@@ -417,6 +454,23 @@ export default function AdminBreaksPage() {
                 value={dateFilter}
                 onChange={(e) => handleFilterChange(setDateFilter)(e.target.value)}
               />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Pay Cycle</label>
+              <Select value={salaryCycleFilter} onValueChange={(value) => {
+                setSalaryCycleFilter(value)
+                setCurrentPage(1)
+              }}>
+                <SelectTrigger className="w-full h-10 border-gray-300">
+                  <SelectValue placeholder={`Current Cycle (${currentCycleLabel})`} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Cycles</SelectItem>
+                  <SelectItem value="previous">Previous Cycle ({previousCycleLabel})</SelectItem>
+                  <SelectItem value="current">Current Cycle ({currentCycleLabel})</SelectItem>
+                  <SelectItem value="next">Next Cycle ({nextCycleLabel})</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardContent>

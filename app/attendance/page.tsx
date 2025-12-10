@@ -18,6 +18,7 @@ import { Calendar } from '@/components/ui/calendar'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { getCurrentPayCycle, getPayCycleByOffset, formatPayCyclePeriod } from '@/lib/pay-cycle-utils'
 
 interface AttendanceRecord {
   id: number
@@ -48,6 +49,12 @@ export default function AttendanceRecordsPage() {
   const [employeeSearch, setEmployeeSearch] = useState('')
   const [salaryCycleFilter, setSalaryCycleFilter] = useState('current')
   const [quickFilter, setQuickFilter] = useState('')
+
+  // Calculate dynamic pay cycles
+  const currentCycle = getCurrentPayCycle()
+  const previousCycle = getPayCycleByOffset(-1)
+  const currentCycleLabel = formatPayCyclePeriod(currentCycle.start, currentCycle.end)
+  const previousCycleLabel = formatPayCyclePeriod(previousCycle.start, previousCycle.end)
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -254,18 +261,17 @@ export default function AttendanceRecordsPage() {
     let matchesSalaryCycle = true
     if (salaryCycleFilter !== 'all') {
       const recordDate = new Date(record.date)
-      const today = new Date()
       
       if (salaryCycleFilter === 'current') {
-        // Current cycle: 6 Nov to 5 Dec
-        const cycleStart = new Date(2025, 10, 6) // Nov 6, 2025 (month is 0-indexed)
-        const cycleEnd = new Date(2025, 11, 5) // Dec 5, 2025
+        // Use dynamic current cycle
+        const cycleStart = new Date(currentCycle.start)
+        const cycleEnd = new Date(currentCycle.end)
         cycleEnd.setHours(23, 59, 59, 999)
         matchesSalaryCycle = recordDate >= cycleStart && recordDate <= cycleEnd
       } else if (salaryCycleFilter === 'previous') {
-        // Previous cycle: 6 Oct to 5 Nov
-        const cycleStart = new Date(2025, 9, 6) // Oct 6, 2025
-        const cycleEnd = new Date(2025, 10, 5) // Nov 5, 2025
+        // Use dynamic previous cycle
+        const cycleStart = new Date(previousCycle.start)
+        const cycleEnd = new Date(previousCycle.end)
         cycleEnd.setHours(23, 59, 59, 999)
         matchesSalaryCycle = recordDate >= cycleStart && recordDate <= cycleEnd
       }
@@ -975,11 +981,12 @@ export default function AttendanceRecordsPage() {
                 setCurrentPage(1)
               }}>
                 <SelectTrigger className="w-52 h-10 border-gray-300">
-                  <SelectValue placeholder="Current Cycle (6 Nov - 5 Dec)" />
+                  <SelectValue placeholder={`Current Cycle (${currentCycleLabel})`} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="current">Current Cycle (6 Nov - 5 Dec)</SelectItem>
-                  <SelectItem value="previous">Previous Cycle (6 Oct - 5 Nov)</SelectItem>
+                  <SelectItem value="all">All Cycles</SelectItem>
+                  <SelectItem value="current">Current Cycle ({currentCycleLabel})</SelectItem>
+                  <SelectItem value="previous">Previous Cycle ({previousCycleLabel})</SelectItem>
                 </SelectContent>
               </Select>
             </div>
