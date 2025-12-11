@@ -595,6 +595,10 @@ export default function SubmitTagsPage() {
                               }
                             })
                           }}
+                          onWheel={(e) => {
+                            e.preventDefault()
+                            e.currentTarget.blur()
+                          }}
                           min="0"
                           className="w-20 text-center h-9"
                           disabled={isDateSubmitted}
