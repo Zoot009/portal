@@ -22,45 +22,79 @@ interface BreakSession {
 export default function BreakPage() {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [elapsedTime, setElapsedTime] = useState(0)
+  const [isAppResumed, setIsAppResumed] = useState(false)
   const queryClient = useQueryClient()
 
-  // Fetch employee info
+  // Fetch employee info with proper error handling and cache busting
   const { data: authData } = useQuery({
     queryKey: ['auth'],
     queryFn: async () => {
-      const response = await fetch('/api/auth/me')
+      const response = await fetch('/api/auth/me', {
+        cache: 'no-cache',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      })
       if (!response.ok) throw new Error('Failed to fetch user data')
       return response.json()
     },
+    staleTime: 0, // Always fetch fresh data on component mount
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   })
 
-  const employeeId = authData?.employee?.id
+  // Ensure employeeId is always a number and valid
+  const employeeId = authData?.employee?.id ? Number(authData.employee.id) : null
 
-  // Fetch active break session
+  // Fetch active break session with enhanced validation
   const { data: activeBreakData, isLoading } = useQuery({
     queryKey: ['active-break', employeeId],
     queryFn: async () => {
-      if (!employeeId) return null
-      const response = await fetch(`/api/breaks/active?employeeId=${employeeId}`)
-      if (!response.ok) throw new Error('Failed to fetch active break')
+      if (!employeeId || isNaN(employeeId)) {
+        console.warn('Invalid employeeId for active break query:', employeeId)
+        return null
+      }
+      const response = await fetch(`/api/breaks/active?employeeId=${employeeId}`, {
+        headers: {
+          'Cache-Control': 'no-cache',
+        }
+      })
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to fetch active break')
+      }
       return response.json()
     },
-    enabled: !!employeeId,
+    enabled: !!employeeId && !isNaN(Number(employeeId)),
     refetchInterval: 5000, // Refetch every 5 seconds to keep data fresh
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   })
 
-  // Fetch today's break history for stats
+  // Fetch today's break history for stats with validation
   const { data: breakHistoryData } = useQuery({
     queryKey: ['break-history-today', employeeId],
     queryFn: async () => {
-      if (!employeeId) return null
+      if (!employeeId || isNaN(employeeId)) {
+        console.warn('Invalid employeeId for break history query:', employeeId)
+        return null
+      }
       const today = new Date().toISOString().split('T')[0]
-      const response = await fetch(`/api/breaks/history?employeeId=${employeeId}&date=${today}`)
-      if (!response.ok) throw new Error('Failed to fetch break history')
+      const response = await fetch(`/api/breaks/history?employeeId=${employeeId}&date=${today}`, {
+        headers: {
+          'Cache-Control': 'no-cache',
+        }
+      })
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to fetch break history')
+      }
       return response.json()
     },
-    enabled: !!employeeId,
+    enabled: !!employeeId && !isNaN(Number(employeeId)),
     refetchInterval: 10000, // Refetch every 10 seconds
+    retry: 2,
   })
 
   const activeBreak = activeBreakData?.data
@@ -72,6 +106,57 @@ export default function BreakPage() {
   
   const completedBreaks = breakHistory.filter((b: BreakSession) => b.status === 'COMPLETED').length
   const avgBreakTime = completedBreaks > 0 ? Math.round(totalBreakTime / completedBreaks) : 0
+
+  // Handle page visibility changes (when user reopens app on mobile)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && employeeId) {
+        // When page becomes visible again, refetch auth and break data
+        console.log('Page became visible, refreshing break data...')
+        setIsAppResumed(true)
+        queryClient.invalidateQueries({ queryKey: ['auth'] })
+        queryClient.invalidateQueries({ queryKey: ['active-break', employeeId] })
+        queryClient.refetchQueries({ queryKey: ['auth'] })
+        queryClient.refetchQueries({ queryKey: ['active-break', employeeId] })
+        
+        // Reset the resumed flag after a short delay
+        setTimeout(() => setIsAppResumed(false), 2000)
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    // Also handle focus events for better mobile support
+    const handleFocus = () => {
+      if (employeeId) {
+        console.log('Window focused, refreshing break data...')
+        queryClient.refetchQueries({ queryKey: ['active-break', employeeId] })
+      }
+    }
+    
+    // Handle resume events (mobile browsers)
+    const handleResume = () => {
+      if (employeeId) {
+        console.log('App resumed, clearing cache and refreshing...')
+        setIsAppResumed(true)
+        // Clear potential stale data
+        queryClient.clear()
+        setTimeout(() => {
+          queryClient.refetchQueries({ queryKey: ['auth'] })
+          setIsAppResumed(false)
+        }, 100)
+      }
+    }
+    
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('resume', handleResume)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('resume', handleResume)
+    }
+  }, [employeeId, queryClient])
 
   // Update current time every second
   useEffect(() => {
@@ -92,16 +177,26 @@ export default function BreakPage() {
     }
   }, [activeBreak, currentTime])
 
-  // Start break mutation
+  // Start break mutation with validation
   const startBreakMutation = useMutation({
     mutationFn: async () => {
+      if (!employeeId || isNaN(employeeId)) {
+        throw new Error('Invalid employee ID. Please refresh the page and try again.')
+      }
+      
+      console.log('Starting break for employeeId:', employeeId, 'Type:', typeof employeeId)
+      
       const response = await fetch('/api/breaks/start', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employeeId }),
+        headers: { 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache' 
+        },
+        body: JSON.stringify({ employeeId: Number(employeeId) }),
       })
       if (!response.ok) {
         const error = await response.json()
+        console.error('Start break API error:', error)
         throw new Error(error.error || 'Failed to start break')
       }
       return response.json()
@@ -120,16 +215,26 @@ export default function BreakPage() {
     },
   })
 
-  // End break mutation
+  // End break mutation with enhanced validation
   const endBreakMutation = useMutation({
     mutationFn: async () => {
+      if (!employeeId || isNaN(employeeId)) {
+        throw new Error('Invalid employee ID. Please refresh the page and try again.')
+      }
+      
+      console.log('Ending break for employeeId:', employeeId, 'Type:', typeof employeeId)
+      
       const response = await fetch('/api/breaks/end', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employeeId }),
+        headers: { 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache' 
+        },
+        body: JSON.stringify({ employeeId: Number(employeeId) }),
       })
       if (!response.ok) {
         const error = await response.json()
+        console.error('End break API error:', error)
         throw new Error(error.error || 'Failed to end break')
       }
       return response.json()
@@ -164,10 +269,36 @@ export default function BreakPage() {
     return `${mins}m`
   }
 
-  if (isLoading) {
+  if (isLoading || isAppResumed) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">
+            {isAppResumed ? 'Refreshing session data...' : 'Loading...'}
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state if employeeId is invalid
+  if (!employeeId || isNaN(employeeId)) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Coffee className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h2 className="text-lg font-semibold mb-2">Session Error</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Unable to load your employee information.
+          </p>
+          <Button 
+            onClick={() => window.location.reload()} 
+            size="sm"
+          >
+            Refresh Page
+          </Button>
+        </div>
       </div>
     )
   }
@@ -249,8 +380,14 @@ export default function BreakPage() {
                 <Button
                   size="lg"
                   variant="destructive"
-                  onClick={() => endBreakMutation.mutate()}
-                  disabled={endBreakMutation.isPending}
+                  onClick={() => {
+                    if (!employeeId || isNaN(employeeId)) {
+                      toast.error('Session error. Please refresh the page and try again.')
+                      return
+                    }
+                    endBreakMutation.mutate()
+                  }}
+                  disabled={endBreakMutation.isPending || !employeeId || isNaN(employeeId) || isAppResumed}
                   className="h-12 md:h-14 px-8 md:px-12 text-base md:text-lg font-semibold"
                 >
                   {endBreakMutation.isPending ? (
@@ -277,8 +414,14 @@ export default function BreakPage() {
                 </p>
                 <Button
                   size="lg"
-                  onClick={() => startBreakMutation.mutate()}
-                  disabled={startBreakMutation.isPending}
+                  onClick={() => {
+                    if (!employeeId || isNaN(employeeId)) {
+                      toast.error('Session error. Please refresh the page and try again.')
+                      return
+                    }
+                    startBreakMutation.mutate()
+                  }}
+                  disabled={startBreakMutation.isPending || !employeeId || isNaN(employeeId) || isAppResumed}
                   className="h-12 md:h-14 px-8 md:px-12 text-base md:text-lg font-semibold"
                 >
                   {startBreakMutation.isPending ? (

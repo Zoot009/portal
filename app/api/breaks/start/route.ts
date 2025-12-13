@@ -9,6 +9,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { employeeId } = body
 
+    console.log('Start break request - employeeId:', employeeId, 'Type:', typeof employeeId)
+
     if (!employeeId) {
       return NextResponse.json(
         {
@@ -19,10 +21,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate employeeId is a valid number
+    const numericEmployeeId = Number(employeeId)
+    if (isNaN(numericEmployeeId) || numericEmployeeId <= 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid employee ID format. Expected a positive number.',
+        },
+        { status: 400 }
+      )
+    }
+
     // Check if there's already an active break
     const activeBreak = await prisma.break.findFirst({
       where: {
-        employeeId: parseInt(employeeId),
+        employeeId: numericEmployeeId,
         isActive: true,
       },
     })
@@ -43,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     const newBreak = await prisma.break.create({
       data: {
-        employeeId: parseInt(employeeId),
+        employeeId: numericEmployeeId,
         breakDate: today,
         breakInTime: new Date(),
         isActive: true,
