@@ -121,6 +121,7 @@ export async function PATCH(
     // Calculate new duration if both times are provided
     let newDuration = existingBreak.breakDuration
     if (breakInTime && breakOutTime) {
+      // Parse ISO strings properly to avoid timezone issues
       const inTime = new Date(breakInTime)
       const outTime = new Date(breakOutTime)
       

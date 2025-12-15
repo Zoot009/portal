@@ -69,8 +69,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Combine date and times to create full datetime objects
-    const breakInDateTime = new Date(`${breakDate}T${breakInTime}`)
-    const breakOutDateTime = new Date(`${breakDate}T${breakOutTime}`)
+    // Parse the date and time components separately to avoid timezone issues
+    const [year, month, day] = breakDate.split('-').map(Number)
+    const [inHour, inMinute] = breakInTime.split(':').map(Number)
+    const [outHour, outMinute] = breakOutTime.split(':').map(Number)
+    
+    const breakInDateTime = new Date(year, month - 1, day, inHour, inMinute, 0)
+    const breakOutDateTime = new Date(year, month - 1, day, outHour, outMinute, 0)
 
     // Validate times
     if (breakInDateTime >= breakOutDateTime) {
