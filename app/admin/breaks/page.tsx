@@ -79,6 +79,14 @@ export default function AdminBreaksPage() {
   const [exportType, setExportType] = useState<'all' | 'individual'>('all')
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('')
   const [isExporting, setIsExporting] = useState(false)
+  const [manualEntryDialogOpen, setManualEntryDialogOpen] = useState(false)
+  const [manualEntryData, setManualEntryData] = useState({
+    employeeId: '',
+    breakDate: '',
+    breakInTime: '',
+    breakOutTime: '',
+    notes: '',
+  })
 
   const queryClient = useQueryClient()
 
@@ -193,6 +201,37 @@ export default function AdminBreaksPage() {
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to delete break record')
+    },
+  })
+
+  // Manual break entry mutation
+  const manualEntryMutation = useMutation({
+    mutationFn: async (data: typeof manualEntryData) => {
+      const response = await fetch('/api/admin/breaks/manual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to create manual break entry')
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      toast.success('Manual break entry created successfully')
+      queryClient.invalidateQueries({ queryKey: ['admin-breaks'] })
+      setManualEntryDialogOpen(false)
+      setManualEntryData({
+        employeeId: '',
+        breakDate: '',
+        breakInTime: '',
+        breakOutTime: '',
+        notes: '',
+      })
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to create manual break entry')
     },
   })
 
@@ -423,10 +462,16 @@ export default function AdminBreaksPage() {
           <h2 className="text-3xl font-bold tracking-tight">Break Management</h2>
           <p className="text-muted-foreground">Monitor and manage employee break sessions</p>
         </div>
-        <Button onClick={handleExportClick}>
-          <Download className="mr-2 h-4 w-4" />
-          Export Data
-        </Button>
+        <div className="flex items-center space-x-3">
+          <Button onClick={() => setManualEntryDialogOpen(true)} variant="outline">
+            <Coffee className="mr-2 h-4 w-4" />
+            Add Manual Break
+          </Button>
+          <Button onClick={handleExportClick}>
+            <Download className="mr-2 h-4 w-4" />
+            Export Data
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -1122,6 +1167,115 @@ export default function AdminBreaksPage() {
                 <>
                   <Download className="mr-2 h-4 w-4" />
                   Export CSV
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manual Break Entry Dialog */}
+      <Dialog open={manualEntryDialogOpen} onOpenChange={setManualEntryDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Manual Break Entry</DialogTitle>
+            <DialogDescription>
+              Create a break entry manually for an employee. This will be marked as manually entered.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Employee Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="employee">Employee</Label>
+              <Select 
+                value={manualEntryData.employeeId} 
+                onValueChange={(value) => setManualEntryData(prev => ({ ...prev, employeeId: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select an employee" />
+                </SelectTrigger>
+                <SelectContent>
+                  {employeesData?.data?.map((employee: any) => (
+                    <SelectItem key={employee.id} value={employee.id.toString()}>
+                      {employee.name} ({employee.employeeCode})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Break Date */}
+            <div className="space-y-2">
+              <Label htmlFor="break-date">Break Date</Label>
+              <Input
+                id="break-date"
+                type="date"
+                value={manualEntryData.breakDate}
+                onChange={(e) => setManualEntryData(prev => ({ ...prev, breakDate: e.target.value }))}
+              />
+            </div>
+
+            {/* Break In Time */}
+            <div className="space-y-2">
+              <Label htmlFor="break-in-time">Break Start Time</Label>
+              <Input
+                id="break-in-time"
+                type="time"
+                value={manualEntryData.breakInTime}
+                onChange={(e) => setManualEntryData(prev => ({ ...prev, breakInTime: e.target.value }))}
+              />
+            </div>
+
+            {/* Break Out Time */}
+            <div className="space-y-2">
+              <Label htmlFor="break-out-time">Break End Time</Label>
+              <Input
+                id="break-out-time"
+                type="time"
+                value={manualEntryData.breakOutTime}
+                onChange={(e) => setManualEntryData(prev => ({ ...prev, breakOutTime: e.target.value }))}
+              />
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes (Optional)</Label>
+              <Textarea
+                id="notes"
+                placeholder="Add any notes about this manual entry..."
+                value={manualEntryData.notes}
+                onChange={(e) => setManualEntryData(prev => ({ ...prev, notes: e.target.value }))}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setManualEntryDialogOpen(false)}
+              disabled={manualEntryMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => manualEntryMutation.mutate(manualEntryData)}
+              disabled={
+                manualEntryMutation.isPending ||
+                !manualEntryData.employeeId ||
+                !manualEntryData.breakDate ||
+                !manualEntryData.breakInTime ||
+                !manualEntryData.breakOutTime
+              }
+            >
+              {manualEntryMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Create Break Entry
                 </>
               )}
             </Button>

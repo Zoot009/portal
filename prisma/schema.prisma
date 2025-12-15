@@ -65,6 +65,7 @@ model Employee {
   teamMemberships            TeamMembership[]        @relation("TeamMember")
   teamLeaderships            TeamMembership[]        @relation("TeamLeader")
   warnings                   Warning[]
+  manualBreakEntries         Break[]                 @relation("ManualBreakEntries")
 
   @@map("employees")
 }
@@ -233,20 +234,24 @@ model AttendanceRecord {
 }
 
 model Break {
-  id            Int                @id @default(autoincrement())
-  employeeId    Int                @map("employee_id")
-  breakDate     DateTime           @map("break_date") @db.Date
-  breakInTime   DateTime?          @map("break_in_time")
-  breakOutTime  DateTime?          @map("break_out_time")
-  breakDuration Int                @default(0) @map("break_duration")
-  isActive      Boolean            @default(false) @map("is_active")
-  warningSent   Boolean            @default(false) @map("warning_sent")
-  createdAt     DateTime           @default(now()) @map("created_at")
-  editReason    String?            @map("edit_reason")
-  hasBeenEdited Boolean            @default(false) @map("has_been_edited")
-  updatedAt     DateTime           @default(now()) @updatedAt @map("updated_at")
-  editHistory   BreakEditHistory[]
-  employee      Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  id               Int                @id @default(autoincrement())
+  employeeId       Int                @map("employee_id")
+  breakDate        DateTime           @map("break_date") @db.Date
+  breakInTime      DateTime?          @map("break_in_time")
+  breakOutTime     DateTime?          @map("break_out_time")
+  breakDuration    Int                @default(0) @map("break_duration")
+  isActive         Boolean            @default(false) @map("is_active")
+  warningSent      Boolean            @default(false) @map("warning_sent")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  editReason       String?            @map("edit_reason")
+  hasBeenEdited    Boolean            @default(false) @map("has_been_edited")
+  updatedAt        DateTime           @default(now()) @updatedAt @map("updated_at")
+  isManualEntry    Boolean            @default(false) @map("is_manual_entry")
+  manualEntryBy    Int?               @map("manual_entry_by")
+  manualEntryNotes String?            @map("manual_entry_notes")
+  editHistory      BreakEditHistory[]
+  employee         Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  manualEntryAdmin Employee?          @relation("ManualBreakEntries", fields: [manualEntryBy], references: [id])
 
   @@map("breaks")
 }
