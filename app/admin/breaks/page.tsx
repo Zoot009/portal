@@ -29,19 +29,12 @@ const createTimezoneAwareDate = (date: string, time: string) => {
 const formatForDateTimeInput = (dateString: string | null) => {
   if (!dateString) return ''
   const date = new Date(dateString)
-  // Create a new date with the same components but no timezone offset
-  const localDate = new Date(
-    date.getUTCFullYear(),
-    date.getUTCMonth(),
-    date.getUTCDate(),
-    date.getUTCHours(),
-    date.getUTCMinutes()
-  )
-  const year = localDate.getFullYear()
-  const month = String(localDate.getMonth() + 1).padStart(2, '0')
-  const day = String(localDate.getDate()).padStart(2, '0')
-  const hours = String(localDate.getHours()).padStart(2, '0')
-  const minutes = String(localDate.getMinutes()).padStart(2, '0')
+  // Format for datetime-local input - use local time components
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
   return `${year}-${month}-${day}T${hours}:${minutes}`
 }
 
@@ -291,20 +284,10 @@ export default function AdminBreaksPage() {
       return
     }
 
-    // Convert to UTC and send as ISO string to maintain consistency
-    const inTimeUTC = new Date(Date.UTC(
-      inTime.getFullYear(), inTime.getMonth(), inTime.getDate(),
-      inTime.getHours(), inTime.getMinutes(), inTime.getSeconds()
-    ))
-    const outTimeUTC = new Date(Date.UTC(
-      outTime.getFullYear(), outTime.getMonth(), outTime.getDate(),
-      outTime.getHours(), outTime.getMinutes(), outTime.getSeconds()
-    ))
-
     editBreakMutation.mutate({
       id: selectedBreak.id,
-      breakInTime: inTimeUTC.toISOString(),
-      breakOutTime: outTimeUTC.toISOString(),
+      breakInTime: inTime.toISOString(),
+      breakOutTime: outTime.toISOString(),
       editReason: editFormData.editReason,
     })
   }
@@ -369,25 +352,22 @@ export default function AdminBreaksPage() {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
-    // Use UTC methods to avoid timezone issues
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
-      timeZone: 'UTC'
     })
   }
 
   const formatTime = (dateString: string | null) => {
     if (!dateString) return '-'
     const date = new Date(dateString)
-    // Use UTC methods to avoid timezone conversion issues
-    const hours = date.getUTCHours()
-    const minutes = date.getUTCMinutes()
-    const period = hours >= 12 ? 'PM' : 'AM'
-    const displayHours = hours % 12 || 12
-    const displayMinutes = minutes.toString().padStart(2, '0')
-    return `${displayHours}:${displayMinutes} ${period}`
+    // Use the same formatting as employee panel for consistency
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    })
   }
 
   // Export functionality
