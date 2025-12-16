@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Search, Edit, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Clock, ArrowRight } from 'lucide-react'
+import { Search, Edit, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Clock, ArrowRight, Download } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import Link from 'next/link'
 import { getCurrentPayCycle, getPayCycleByOffset, formatPayCyclePeriod } from '@/lib/pay-cycle-utils'
@@ -55,7 +55,6 @@ const statusColors: Record<string, string> = {
 export default function EditedRecordsListPage() {
   const [employeeSearch, setEmployeeSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [dateFilter, setDateFilter] = useState('')
   const [salaryCycleFilter, setSalaryCycleFilter] = useState('current')
   const [currentPage, setCurrentPage] = useState(1)
   const [recordsPerPage, setRecordsPerPage] = useState(10)
@@ -151,8 +150,6 @@ export default function EditedRecordsListPage() {
     
     const matchesStatus = statusFilter === 'all' || record.status === statusFilter
     
-    const matchesDate = !dateFilter || record.date.startsWith(dateFilter)
-    
     // Salary cycle filter
     let matchesSalaryCycle = true
     if (salaryCycleFilter !== 'all') {
@@ -173,7 +170,7 @@ export default function EditedRecordsListPage() {
       }
     }
     
-    return matchesSearch && matchesStatus && matchesDate && matchesSalaryCycle
+    return matchesSearch && matchesStatus && matchesSalaryCycle
   })
 
   // Pagination logic
@@ -199,9 +196,63 @@ export default function EditedRecordsListPage() {
   const clearAllFilters = () => {
     setEmployeeSearch('')
     setStatusFilter('all')
-    setDateFilter('')
     setSalaryCycleFilter('current')
     setCurrentPage(1)
+  }
+
+  // Export function
+  const handleExport = () => {
+    if (filteredRecords.length === 0) {
+      alert('No edited records to export')
+      return
+    }
+
+    // Create CSV content
+    const headers = [
+      'Employee Code',
+      'Employee Name', 
+      'Date',
+      'Status',
+      'Check In Time',
+      'Check Out Time',
+      'Break In Time',
+      'Break Out Time',
+      'Total Hours',
+      'Overtime',
+      'Edited At',
+      'Edit Reason',
+      'Edit Count'
+    ]
+
+    const csvContent = [
+      headers.join(','),
+      ...filteredRecords.map(record => [
+        record.employeeCode,
+        `"${record.employeeName}"`,
+        record.date,
+        record.status,
+        formatValue(record.checkInTime),
+        formatValue(record.checkOutTime),
+        formatValue(record.breakInTime),
+        formatValue(record.breakOutTime),
+        record.totalHours || 0,
+        record.overtime || 0,
+        record.editedAt ? new Date(record.editedAt).toLocaleString() : '',
+        `"${record.editReason || ''}"`,
+        record.editCount || 0
+      ].join(','))
+    ].join('\n')
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `edited-attendance-records-${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   return (
@@ -213,6 +264,14 @@ export default function EditedRecordsListPage() {
           <p className="text-muted-foreground">View all records that have been modified</p>
         </div>
         <div className="flex gap-2">
+          <Button 
+            onClick={handleExport}
+            disabled={filteredRecords.length === 0}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV ({filteredRecords.length})
+          </Button>
           <Link href="/attendance">
             <Button variant="outline">
               <ChevronLeft className="h-4 w-4 mr-2" />
@@ -329,17 +388,6 @@ export default function EditedRecordsListPage() {
                   <SelectItem value="previous">Previous Cycle ({previousCycleLabel})</SelectItem>
                 </SelectContent>
               </Select>
-
-              <Input
-                type="date"
-                value={dateFilter}
-                onChange={(e) => {
-                  setDateFilter(e.target.value)
-                  setCurrentPage(1)
-                }}
-                className="w-40 h-10"
-                placeholder="Filter by date"
-              />
 
               <Button 
                 variant="ghost" 
