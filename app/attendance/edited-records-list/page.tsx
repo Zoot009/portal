@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Search, Edit, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Clock, ArrowRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import Link from 'next/link'
+import { getCurrentPayCycle, getPayCycleByOffset, formatPayCyclePeriod } from '@/lib/pay-cycle-utils'
 
 interface EditHistoryEntry {
   id: number
@@ -55,9 +56,16 @@ export default function EditedRecordsListPage() {
   const [employeeSearch, setEmployeeSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('')
+  const [salaryCycleFilter, setSalaryCycleFilter] = useState('current')
   const [currentPage, setCurrentPage] = useState(1)
   const [recordsPerPage, setRecordsPerPage] = useState(10)
   const [expandedRecord, setExpandedRecord] = useState<number | null>(null)
+
+  // Calculate dynamic pay cycles
+  const currentCycle = getCurrentPayCycle()
+  const previousCycle = getPayCycleByOffset(-1)
+  const currentCycleLabel = formatPayCyclePeriod(currentCycle.start, currentCycle.end)
+  const previousCycleLabel = formatPayCyclePeriod(previousCycle.start, previousCycle.end)
 
   // Helper function to format field names for display
   const formatFieldName = (fieldName: string): string => {
@@ -145,7 +153,27 @@ export default function EditedRecordsListPage() {
     
     const matchesDate = !dateFilter || record.date.startsWith(dateFilter)
     
-    return matchesSearch && matchesStatus && matchesDate
+    // Salary cycle filter
+    let matchesSalaryCycle = true
+    if (salaryCycleFilter !== 'all') {
+      const recordDate = new Date(record.date)
+      
+      if (salaryCycleFilter === 'current') {
+        // Use dynamic current cycle
+        const cycleStart = new Date(currentCycle.start)
+        const cycleEnd = new Date(currentCycle.end)
+        cycleEnd.setHours(23, 59, 59, 999)
+        matchesSalaryCycle = recordDate >= cycleStart && recordDate <= cycleEnd
+      } else if (salaryCycleFilter === 'previous') {
+        // Use dynamic previous cycle
+        const cycleStart = new Date(previousCycle.start)
+        const cycleEnd = new Date(previousCycle.end)
+        cycleEnd.setHours(23, 59, 59, 999)
+        matchesSalaryCycle = recordDate >= cycleStart && recordDate <= cycleEnd
+      }
+    }
+    
+    return matchesSearch && matchesStatus && matchesDate && matchesSalaryCycle
   })
 
   // Pagination logic
@@ -172,6 +200,7 @@ export default function EditedRecordsListPage() {
     setEmployeeSearch('')
     setStatusFilter('all')
     setDateFilter('')
+    setSalaryCycleFilter('current')
     setCurrentPage(1)
   }
 
@@ -284,6 +313,20 @@ export default function EditedRecordsListPage() {
                   <SelectItem value="ABSENT">Absent</SelectItem>
                   <SelectItem value="LATE">Late</SelectItem>
                   <SelectItem value="WFH_APPROVED">WFH</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={salaryCycleFilter} onValueChange={(value) => {
+                setSalaryCycleFilter(value)
+                setCurrentPage(1)
+              }}>
+                <SelectTrigger className="w-52 h-10">
+                  <SelectValue placeholder={`Current Cycle (${currentCycleLabel})`} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Cycles</SelectItem>
+                  <SelectItem value="current">Current Cycle ({currentCycleLabel})</SelectItem>
+                  <SelectItem value="previous">Previous Cycle ({previousCycleLabel})</SelectItem>
                 </SelectContent>
               </Select>
 
