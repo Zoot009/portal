@@ -226,10 +226,7 @@ export default function EditedRecordsListPage() {
       'Break In Time',
       'Break Out Time',
       'Total Hours',
-      'Overtime',
-      'Edited At',
-      'Edit Reason',
-      'Edit Count'
+      'Overtime'
     ]
 
     const csvContent = [
@@ -239,15 +236,12 @@ export default function EditedRecordsListPage() {
         `"${record.employeeName}"`,
         record.date,
         record.status,
-        formatValue(record.checkInTime),
-        formatValue(record.checkOutTime),
-        formatValue(record.breakInTime),
-        formatValue(record.breakOutTime),
+        formatTime(record.checkInTime),
+        formatTime(record.checkOutTime),
+        formatTime(record.breakInTime),
+        formatTime(record.breakOutTime),
         formatHoursToTime(record.totalHours || 0),
-        formatHoursToTime(record.overtime || 0),
-        record.editedAt ? new Date(record.editedAt).toLocaleString() : '',
-        `"${record.editReason || ''}"`,
-        record.editCount || 0
+        formatHoursToTime(record.overtime || 0)
       ].join(','))
     ].join('\n')
 
