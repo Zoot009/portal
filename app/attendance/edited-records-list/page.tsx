@@ -200,6 +200,14 @@ export default function EditedRecordsListPage() {
     setCurrentPage(1)
   }
 
+  // Helper function to format hours to HH:MM
+  const formatHoursToTime = (hours: number): string => {
+    if (!hours || hours === 0) return '00:00'
+    const wholeHours = Math.floor(hours)
+    const minutes = Math.round((hours % 1) * 60)
+    return `${wholeHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+  }
+
   // Export function
   const handleExport = () => {
     if (filteredRecords.length === 0) {
@@ -235,8 +243,8 @@ export default function EditedRecordsListPage() {
         formatValue(record.checkOutTime),
         formatValue(record.breakInTime),
         formatValue(record.breakOutTime),
-        record.totalHours || 0,
-        record.overtime || 0,
+        formatHoursToTime(record.totalHours || 0),
+        formatHoursToTime(record.overtime || 0),
         record.editedAt ? new Date(record.editedAt).toLocaleString() : '',
         `"${record.editReason || ''}"`,
         record.editCount || 0
