@@ -557,13 +557,15 @@ export default function MyAttendanceRecordsPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Days Present</CardTitle>
-            <CalendarCheck className="h-4 w-4 text-green-600" />
+            <CardTitle className="text-sm font-medium">Expected Hours</CardTitle>
+            <Clock className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{loading ? '-' : stats.present}</div>
+            <div className="text-2xl font-bold text-green-600">
+              {loading ? '-' : formatHoursToTime((stats.present + stats.absent) * (8 + 20/60))}
+            </div>
             <p className="text-xs text-muted-foreground">
-              Working days
+              {stats.present + stats.absent} days @ 08:20/day
             </p>
           </CardContent>
         </Card>
