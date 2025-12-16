@@ -208,6 +208,20 @@ export default function EditedRecordsListPage() {
     return `${wholeHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
   }
 
+  // Helper function to format time for CSV export
+  const formatTimeForCSV = (isoTimeString: string | null | undefined): string => {
+    if (!isoTimeString || isoTimeString === '-' || isoTimeString === 'null') return ''
+    try {
+      const date = new Date(isoTimeString)
+      if (isNaN(date.getTime())) return ''
+      const hours = date.getUTCHours().toString().padStart(2, '0')
+      const minutes = date.getUTCMinutes().toString().padStart(2, '0')
+      return `${hours}:${minutes}`
+    } catch (error) {
+      return ''
+    }
+  }
+
   // Export function
   const handleExport = () => {
     if (filteredRecords.length === 0) {
@@ -231,15 +245,15 @@ export default function EditedRecordsListPage() {
 
     const csvContent = [
       headers.join(','),
-      ...filteredRecords.map(record => [
-        record.employeeCode,
-        `"${record.employeeName}"`,
-        record.date,
-        record.status,
-        formatTime(record.checkInTime),
-        formatTime(record.checkOutTime),
-        formatTime(record.breakInTime),
-        formatTime(record.breakOutTime),
+      ...filteredRecords.map((record: AttendanceRecord) => [
+        record.employeeCode || '',
+        `"${record.employeeName || ''}"`,
+        record.date || '',
+        record.status || '',
+        formatTimeForCSV(record.checkInTime),
+        formatTimeForCSV(record.checkOutTime),
+        formatTimeForCSV(record.breakInTime),
+        formatTimeForCSV(record.breakOutTime),
         formatHoursToTime(record.totalHours || 0),
         formatHoursToTime(record.overtime || 0)
       ].join(','))
