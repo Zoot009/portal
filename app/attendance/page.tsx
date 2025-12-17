@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Search, Clock, Upload, Calendar as CalendarIcon, MoreVertical, Edit, Trash2, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -77,11 +77,17 @@ export default function AttendanceRecordsPage() {
     editReason: ''
   })
 
-  // Bulk delete dialog state
-  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false)
-  const [deleteDate, setDeleteDate] = useState<Date | undefined>(undefined)
-  const [isBulkDeleting, setIsBulkDeleting] = useState(false)
-  const [recordsToDeleteCount, setRecordsToDeleteCount] = useState(0)
+  // Delete by date dialog state
+  const [isDeleteByDateDialogOpen, setIsDeleteByDateDialogOpen] = useState(false)
+  const [deleteByDateForm, setDeleteByDateForm] = useState({
+    date: new Date().toISOString().split('T')[0]
+  })
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [availableDates, setAvailableDates] = useState<{date: string, count: number}[]>([])
+  const [loadingDates, setLoadingDates] = useState(false)
+  const [previewRecords, setPreviewRecords] = useState<any[]>([])
+  const [previewSummary, setPreviewSummary] = useState<any>(null)
+  const [loadingPreview, setLoadingPreview] = useState(false)
 
   // Helper function to format time
   const formatTime = (isoTimeString: string | null | undefined): string => {
@@ -381,6 +387,91 @@ export default function AttendanceRecordsPage() {
     setIsEditDialogOpen(true)
   }
 
+  // Fetch available dates with records
+  const fetchAvailableDates = async () => {
+    setLoadingDates(true)
+    try {
+      const response = await fetch('/api/attendance/dates-with-records')
+      const data = await response.json()
+      
+      if (response.ok) {
+        setAvailableDates(data.dates || [])
+      } else {
+        console.error('Failed to fetch available dates:', data.error)
+      }
+    } catch (error) {
+      console.error('Error fetching available dates:', error)
+    } finally {
+      setLoadingDates(false)
+    }
+  }
+
+  // Fetch preview records for selected date
+  const fetchPreviewRecords = async (selectedDate: string) => {
+    setLoadingPreview(true)
+    try {
+      const response = await fetch('/api/attendance/preview-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: selectedDate })
+      })
+      const data = await response.json()
+      
+      if (response.ok) {
+        setPreviewRecords(data.records || [])
+        setPreviewSummary(data.summary || null)
+      } else {
+        console.error('Failed to fetch preview records:', data.error)
+        setPreviewRecords([])
+        setPreviewSummary(null)
+      }
+    } catch (error) {
+      console.error('Error fetching preview records:', error)
+      setPreviewRecords([])
+      setPreviewSummary(null)
+    } finally {
+      setLoadingPreview(false)
+    }
+  }
+
+  // Handle delete by date
+  const handleDeleteByDate = async () => {
+    if (!deleteByDateForm.date) {
+      toast.error('Please select a date for deletion')
+      return
+    }
+
+    setIsDeleting(true)
+    try {
+      const response = await fetch('/api/attendance/delete-by-date', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: deleteByDateForm.date
+        })
+      })
+
+      const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete records')
+      }
+
+      toast.success(data.message)
+      setIsDeleteByDateDialogOpen(false)
+      setDeleteByDateForm({
+        date: new Date().toISOString().split('T')[0]
+      })
+      refetch()
+      fetchAvailableDates() // Refresh available dates after deletion
+    } catch (error) {
+      console.error('Delete by date error:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to delete records')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   // Handle save edited record
   const handleSaveEditedRecord = async () => {
     if (!editingRecord) return
@@ -455,65 +546,7 @@ export default function AttendanceRecordsPage() {
     window.location.href = `/attendance/edited-records-list`
   }
 
-  // Handle bulk delete by date
-  const handleOpenBulkDelete = () => {
-    setDeleteDate(undefined)
-    setRecordsToDeleteCount(0)
-    setIsBulkDeleteDialogOpen(true)
-  }
 
-  // Update count when date changes
-  const handleDeleteDateChange = (date: Date | undefined) => {
-    setDeleteDate(date)
-    if (date) {
-      // Count records for this date
-      const dateStr = date.toISOString().split('T')[0]
-      const count = records.filter((r: AttendanceRecord) => {
-        const recordDate = r.date.split('T')[0]
-        return recordDate === dateStr
-      }).length
-      setRecordsToDeleteCount(count)
-    } else {
-      setRecordsToDeleteCount(0)
-    }
-  }
-
-  // Confirm bulk delete
-  const handleConfirmBulkDelete = async () => {
-    if (!deleteDate) {
-      toast.error('Please select a date')
-      return
-    }
-    
-    setIsBulkDeleting(true)
-    try {
-      const response = await fetch('/api/attendance/bulk-delete', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          date: deleteDate.toISOString().split('T')[0],
-        }),
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to delete records')
-      }
-
-      await refetch()
-      toast.success(result.message || `Deleted ${result.deletedCount} record(s) successfully`)
-      setIsBulkDeleteDialogOpen(false)
-      setDeleteDate(undefined)
-      setRecordsToDeleteCount(0)
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to delete records')
-    } finally {
-      setIsBulkDeleting(false)
-    }
-  }
 
   return (
     <div className="p-6">
@@ -531,10 +564,207 @@ export default function AttendanceRecordsPage() {
             </Button>
           </Link>
           
-          <Button variant="outline" onClick={handleOpenBulkDelete} className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300">
-            <Trash2 className="h-4 w-4 mr-2" />
-            Bulk Delete
-          </Button>
+          <AlertDialog open={isDeleteByDateDialogOpen} onOpenChange={(open) => {
+            setIsDeleteByDateDialogOpen(open)
+            if (open) {
+              fetchAvailableDates()
+            }
+          }}>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete by Date
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Attendance Records by Date</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action will permanently delete all attendance records for the selected date. 
+                  This action cannot be undone and will affect all employees' records for that date.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="grid gap-4 py-4 overflow-y-auto max-h-[calc(90vh-200px)]">
+                <div className="grid gap-2">
+                  <Label>Available Dates with Records</Label>
+                  {loadingDates ? (
+                    <div className="text-sm text-muted-foreground">Loading available dates...</div>
+                  ) : availableDates.length > 0 ? (
+                    <div className="max-h-32 overflow-y-auto border rounded-lg p-3">
+                      <div className="grid gap-2">
+                        {availableDates.map((dateInfo) => (
+                          <button
+                            key={dateInfo.date}
+                            type="button"
+                            className={`flex items-center justify-between p-3 rounded-lg border-2 text-left transition-all duration-200 ${
+                              deleteByDateForm.date === dateInfo.date 
+                                ? 'bg-blue-50 border-blue-500 text-blue-900 shadow-md dark:bg-blue-950 dark:border-blue-400 dark:text-blue-100' 
+                                : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700'
+                            }`}
+                            onClick={() => {
+                              setDeleteByDateForm(prev => ({ ...prev, date: dateInfo.date }))
+                              fetchPreviewRecords(dateInfo.date)
+                            }}
+                            disabled={isDeleting}
+                          >
+                            <span className="font-medium">
+                              {new Date(dateInfo.date + 'T00:00:00').toLocaleDateString('en-US', {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })}
+                            </span>
+                            <Badge 
+                              variant={deleteByDateForm.date === dateInfo.date ? "default" : "secondary"}
+                              className={deleteByDateForm.date === dateInfo.date ? "bg-blue-600 text-white" : ""}
+                            >
+                              {dateInfo.count} record{dateInfo.count !== 1 ? 's' : ''}
+                            </Badge>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground p-4 border rounded-lg text-center">
+                      No attendance records found in the database.
+                    </div>
+                  )}
+                </div>
+                
+                {deleteByDateForm.date && availableDates.find(d => d.date === deleteByDateForm.date) && (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-amber-50 border-2 border-amber-200 rounded-lg dark:bg-amber-950 dark:border-amber-800">
+                      <div className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                        Selected: {new Date(deleteByDateForm.date + 'T00:00:00').toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </div>
+                      <div className="text-xs text-amber-700 dark:text-amber-300 mt-1 font-medium">
+                        ⚠️ This will permanently delete {availableDates.find(d => d.date === deleteByDateForm.date)?.count || 0} attendance records
+                      </div>
+                    </div>
+
+                    {/* Preview Section */}
+                    <div className="border rounded-lg overflow-hidden">
+                      <div className="px-4 py-2 bg-muted border-b flex items-center justify-between">
+                        <h4 className="font-medium text-sm">Records to be deleted</h4>
+                        {loadingPreview && (
+                          <p className="text-xs text-muted-foreground">Loading...</p>
+                        )}
+                      </div>
+                      
+                      {previewSummary && !loadingPreview && (
+                        <div className="px-4 py-2 bg-red-50 border-b text-xs dark:bg-red-950">
+                          <div className="flex flex-wrap gap-3">
+                            <span className="text-green-700 dark:text-green-300 font-medium">Present: {previewSummary.present}</span>
+                            <span className="text-red-700 dark:text-red-300 font-medium">Absent: {previewSummary.absent}</span>
+                            <span className="text-yellow-700 dark:text-yellow-300 font-medium">Late: {previewSummary.late}</span>
+                            <span className="text-blue-700 dark:text-blue-300 font-medium">Half Day: {previewSummary.halfDay}</span>
+                            <span className="text-purple-700 dark:text-purple-300 font-medium">Edited: {previewSummary.edited}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="max-h-48 overflow-y-auto">
+                        {previewRecords.length > 0 && !loadingPreview ? (
+                          <div className="overflow-x-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="text-xs">
+                                  <TableHead className="w-20 px-2 py-2">Code</TableHead>
+                                  <TableHead className="px-2 py-2 min-w-[100px]">Name</TableHead>
+                                  <TableHead className="px-2 py-2 min-w-[80px]">Dept</TableHead>
+                                  <TableHead className="px-2 py-2 w-16">Status</TableHead>
+                                  <TableHead className="px-2 py-2 w-14">In</TableHead>
+                                  <TableHead className="px-2 py-2 w-14">Out</TableHead>
+                                  <TableHead className="px-2 py-2 w-14">Br In</TableHead>
+                                  <TableHead className="px-2 py-2 w-14">Br Out</TableHead>
+                                  <TableHead className="px-2 py-2 w-16">Hours</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {previewRecords.map((record) => (
+                                  <TableRow key={record.id} className="text-xs hover:bg-muted/50">
+                                    <TableCell className="font-medium px-2 py-1">{record.employeeCode}</TableCell>
+                                    <TableCell className="px-2 py-1 max-w-[100px] truncate" title={record.employeeName}>
+                                      {record.employeeName}
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground px-2 py-1 max-w-[80px] truncate" title={record.department}>
+                                      {record.department}
+                                    </TableCell>
+                                    <TableCell className="px-2 py-1">
+                                      <Badge 
+                                        variant={
+                                          record.status === 'PRESENT' ? 'default' :
+                                          record.status === 'ABSENT' ? 'destructive' :
+                                          record.status === 'LATE' ? 'secondary' : 'outline'
+                                        }
+                                        className="text-[10px] px-1 py-0"
+                                      >
+                                        {record.status === 'PRESENT' ? 'PRE' :
+                                         record.status === 'ABSENT' ? 'ABS' :
+                                         record.status === 'LATE' ? 'LATE' :
+                                         record.status === 'HALF_DAY' ? 'HALF' : 'UNK'}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="font-mono text-[10px] px-1 py-1">
+                                      {record.checkInTime || '-'}
+                                    </TableCell>
+                                    <TableCell className="font-mono text-[10px] px-1 py-1">
+                                      {record.checkOutTime || '-'}
+                                    </TableCell>
+                                    <TableCell className="font-mono text-[10px] px-1 py-1">
+                                      {record.breakInTime || '-'}
+                                    </TableCell>
+                                    <TableCell className="font-mono text-[10px] px-1 py-1">
+                                      {record.breakOutTime || '-'}
+                                    </TableCell>
+                                    <TableCell className="font-mono text-[10px] px-1 py-1">
+                                      {record.totalHours ? `${record.totalHours.toFixed(1)}h` : '0h'}
+                                      {record.hasBeenEdited && (
+                                        <span className="ml-1 text-orange-600" title="Edited record">✏️</span>
+                                      )}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        ) : !loadingPreview ? (
+                          <div className="p-4 text-center text-muted-foreground text-sm">
+                            No records to preview
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel 
+                  onClick={() => {
+                    setDeleteByDateForm({
+                      date: new Date().toISOString().split('T')[0]
+                    })
+                  }}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteByDate}
+                  disabled={isDeleting || !availableDates.find(d => d.date === deleteByDateForm.date)}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete Records'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           
           <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
             <DialogTrigger asChild>
@@ -798,84 +1028,7 @@ export default function AttendanceRecordsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Bulk Delete Confirmation Dialog */}
-      <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
-        <AlertDialogContent className="max-w-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
-              Bulk Delete Attendance Records
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Select a date to permanently delete all attendance records for that day. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div>
-              <Label htmlFor="delete-date" className="text-sm font-medium mb-2 block">Select Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {deleteDate ? format(deleteDate, "PPP") : "Pick a date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={deleteDate}
-                    onSelect={handleDeleteDateChange}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-            
-            {deleteDate && (
-              <div className="bg-muted rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Records to delete:</span>
-                  <Badge variant={recordsToDeleteCount > 0 ? "destructive" : "secondary"} className="text-base px-3 py-1">
-                    {recordsToDeleteCount}
-                  </Badge>
-                </div>
-                {recordsToDeleteCount === 0 && (
-                  <p className="text-xs text-muted-foreground mt-2">No records found for this date</p>
-                )}
-                {recordsToDeleteCount > 0 && (
-                  <p className="text-xs text-red-600 dark:text-red-400 mt-2 font-medium">
-                    ⚠️ This will delete all {recordsToDeleteCount} attendance record{recordsToDeleteCount !== 1 ? 's' : ''} for {format(deleteDate, "MMMM d, yyyy")}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-          
-          <AlertDialogFooter>
-            <AlertDialogCancel 
-              onClick={() => {
-                setIsBulkDeleteDialogOpen(false)
-                setDeleteDate(undefined)
-                setRecordsToDeleteCount(0)
-              }}
-              disabled={isBulkDeleting}
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmBulkDelete}
-              disabled={isBulkDeleting || !deleteDate || recordsToDeleteCount === 0}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              {isBulkDeleting ? 'Deleting...' : `Delete ${recordsToDeleteCount} Record${recordsToDeleteCount !== 1 ? 's' : ''}`}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
