@@ -2,16 +2,26 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
 export async function POST(request: NextRequest) {
+  console.log('🚀 Starting file upload process...')
   try {
+    console.log('📝 Reading form data...')
     const formData = await request.formData()
     const file = formData.get('file') as File
     const date = formData.get('date') as string
 
+    console.log('📋 Upload details:', {
+      fileName: file?.name,
+      fileSize: file?.size,
+      date: date
+    })
+
     if (!file) {
+      console.error('❌ No file provided')
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
     if (!date) {
+      console.error('❌ No date provided')
       return NextResponse.json({ error: 'No date provided' }, { status: 400 })
     }
 
@@ -26,14 +36,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Read file content
+    console.log('📖 Reading file content...')
     const fileContent = await file.text()
     
     if (!fileContent.trim()) {
+      console.error('❌ File is empty')
       return NextResponse.json({ error: 'File is empty' }, { status: 400 })
     }
 
+    console.log('✅ File content loaded, size:', fileContent.length, 'characters')
+
     // Parse attendance data based on file type
     const attendanceRecords: any[] = []
+    console.log('🔍 Starting to parse attendance records...')
     
     try {
       if (fileExtension === '.csv' || fileExtension === '.txt') {
@@ -166,13 +181,17 @@ export async function POST(request: NextRequest) {
       }
 
       if (attendanceRecords.length === 0) {
+        console.error('❌ No valid attendance records found in the file')
         return NextResponse.json({ 
           error: 'No valid attendance records found in the file. Please check the file format.' 
         }, { status: 400 })
       }
 
+      console.log('✅ Parsed', attendanceRecords.length, 'attendance records')
+      console.log('📊 Sample record:', JSON.stringify(attendanceRecords[0], null, 2))
+
       // Save to database using Prisma
-      console.log('Saving attendance records to database:', attendanceRecords)
+      console.log('💾 Starting database save operation...')
 
       // Helper function to parse date and time strings safely
       function parseDateTime(dateStr: string, timeStr: string | null | undefined): Date | undefined {
@@ -205,124 +224,118 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Use Prisma transaction to save records
+      // Process records individually to avoid transaction timeout
       // Generate a single batch ID for this upload
       const batchId = `upload_${Date.now()}`
       
-      const savedRecords = await prisma.$transaction(async (tx) => {
-        const created = []
+      console.log(`💾 Processing ${attendanceRecords.length} records individually...`)
+      const savedRecords = []
+      const errors = []
+
+      for (let i = 0; i < attendanceRecords.length; i++) {
+        const record = attendanceRecords[i]
+        console.log(`🔄 Processing record ${i + 1}/${attendanceRecords.length}: ${record.employeeCode} - ${record.employeeName}`)
         
-        for (const record of attendanceRecords) {
-          try {
-            // Generate a unique employeeId from employeeCode if it's not a number
-            let employeeId: number
-            if (isNaN(parseInt(record.employeeCode))) {
-              // Create a hash-based ID from employeeCode
-              employeeId = Math.abs(record.employeeCode.split('').reduce((a: number, b: string) => {
-                a = ((a << 5) - a) + b.charCodeAt(0)
-                return a
-              }, 0))
-            } else {
-              employeeId = parseInt(record.employeeCode)
+        try {
+          // Find or create employee (without unnecessary updates)
+          console.log(`  🔍 Looking for employee: ${record.employeeCode}`)
+          let employee = await prisma.employee.findFirst({
+            where: { 
+              employeeCode: {
+                equals: record.employeeCode,
+                mode: 'insensitive'
+              }
             }
+          })
 
-            // Ensure employee exists - use employeeCode as unique identifier (case-insensitive)
-            // First try to find existing employee with case-insensitive match
-            let employee = await tx.employee.findFirst({
-              where: { 
-                employeeCode: {
-                  equals: record.employeeCode,
-                  mode: 'insensitive'
-                }
+          if (!employee) {
+            console.log(`  👤 Creating new employee: ${record.employeeCode}`)
+            employee = await prisma.employee.create({
+              data: {
+                name: record.employeeName,
+                email: `${record.employeeCode.toLowerCase()}@company.com`,
+                employeeCode: record.employeeCode
               }
             })
-
-            if (employee) {
-              // Update existing employee
-              employee = await tx.employee.update({
-                where: { id: employee.id },
-                data: {
-                  name: record.employeeName
-                }
-              })
-            } else {
-              // Create new employee
-              employee = await tx.employee.create({
-                data: {
-                  name: record.employeeName,
-                  email: `${record.employeeCode.toLowerCase()}@company.com`,
-                  employeeCode: record.employeeCode
-                }
-              })
-            }
-            
-            // Use the actual employee ID from database
-            employeeId = employee.id
-
-            // Create attendance record with the SAME batch ID for all records
-            const attendanceRecord = await tx.attendanceRecord.upsert({
-              where: {
-                employee_date_attendance: {
-                  employeeId: employeeId,
-                  date: new Date(record.date)
-                }
-              },
-              update: {
-                status: record.status === 'PRESENT' ? 'PRESENT' : 'ABSENT',
-                checkInTime: parseDateTime(record.date, record.checkInTime),
-                checkOutTime: parseDateTime(record.date, record.checkOutTime),
-                breakInTime: parseDateTime(record.date, record.breakInTime),
-                breakOutTime: parseDateTime(record.date, record.breakOutTime),
-                totalHours: record.totalHours || 0,
-                shift: record.shift || null,
-                shiftStart: record.shiftStart || null,
-                hasBeenEdited: false,
-                importSource: 'srp_upload',
-                importBatch: batchId  // Use the single batch ID
-              },
-              create: {
-                employeeId: employeeId,
-                date: new Date(record.date),
-                status: record.status === 'PRESENT' ? 'PRESENT' : 'ABSENT',
-                checkInTime: parseDateTime(record.date, record.checkInTime),
-                checkOutTime: parseDateTime(record.date, record.checkOutTime),
-                breakInTime: parseDateTime(record.date, record.breakInTime),
-                breakOutTime: parseDateTime(record.date, record.breakOutTime),
-                totalHours: record.totalHours || 0,
-                hasTagWork: false,
-                hasFlowaceWork: false,
-                tagWorkMinutes: 0,
-                flowaceMinutes: 0,
-                hasException: false,
-                shift: record.shift || null,
-                shiftStart: record.shiftStart || null,
-                overtime: 0,
-                importSource: 'srp_upload',
-                importBatch: batchId,  // Use the single batch ID
-                hasBeenEdited: false
-              }
-            })
-
-            created.push(attendanceRecord)
-          } catch (error: any) {
-            console.error('Error saving record:', error.message)
-            throw error
+          } else {
+            console.log(`  ✅ Employee found: ID ${employee.id}`)
           }
+          
+          // Create attendance record
+          console.log(`  📝 Creating attendance record...`)
+          const attendanceRecord = await prisma.attendanceRecord.upsert({
+            where: {
+              employee_date_attendance: {
+                employeeId: employee.id,
+                date: new Date(record.date)
+              }
+            },
+            update: {
+              status: record.status === 'PRESENT' ? 'PRESENT' : 'ABSENT',
+              checkInTime: parseDateTime(record.date, record.checkInTime),
+              checkOutTime: parseDateTime(record.date, record.checkOutTime),
+              breakInTime: parseDateTime(record.date, record.breakInTime),
+              breakOutTime: parseDateTime(record.date, record.breakOutTime),
+              totalHours: record.totalHours || 0,
+              shift: record.shift || null,
+              shiftStart: record.shiftStart || null,
+              hasBeenEdited: false,
+              importSource: 'srp_upload',
+              importBatch: batchId
+            },
+            create: {
+              employeeId: employee.id,
+              date: new Date(record.date),
+              status: record.status === 'PRESENT' ? 'PRESENT' : 'ABSENT',
+              checkInTime: parseDateTime(record.date, record.checkInTime),
+              checkOutTime: parseDateTime(record.date, record.checkOutTime),
+              breakInTime: parseDateTime(record.date, record.breakInTime),
+              breakOutTime: parseDateTime(record.date, record.breakOutTime),
+              totalHours: record.totalHours || 0,
+              hasTagWork: false,
+              hasFlowaceWork: false,
+              tagWorkMinutes: 0,
+              flowaceMinutes: 0,
+              hasException: false,
+              shift: record.shift || null,
+              shiftStart: record.shiftStart || null,
+              overtime: 0,
+              importSource: 'srp_upload',
+              importBatch: batchId,
+              hasBeenEdited: false
+            }
+          })
+          
+          console.log(`  ✅ Successfully saved attendance record for ${record.employeeCode}`)
+          savedRecords.push(attendanceRecord)
+          
+        } catch (error: any) {
+          console.error(`  ❌ Error processing ${record.employeeCode}:`, error.message)
+          errors.push({
+            employeeCode: record.employeeCode,
+            error: error.message
+          })
+          // Continue processing other records instead of failing everything
         }
-        return created
-      })
+      }
 
-      console.log('Successfully saved attendance records:', savedRecords.length)
+      console.log(`✅ Processing complete! Successfully saved: ${savedRecords.length}, Errors: ${errors.length}`)
+
+      if (errors.length > 0) {
+        console.log('❌ Errors encountered:', errors)
+      }
 
       // Award points for attendance (run in background, don't block response)
-      awardAttendancePoints(savedRecords).catch(err => 
-        console.error('Error awarding attendance points:', err)
-      )
+      if (savedRecords.length > 0) {
+        awardAttendancePoints(savedRecords).catch(err => 
+          console.error('Error awarding attendance points:', err)
+        )
+      }
 
       // Save to upload history
       try {
         const uploadHistoryEntry = {
-          id: batchId,  // Use the same batch ID
+          id: batchId,
           fileName: file.name,
           uploadDate: date,
           recordCount: savedRecords.length,
@@ -330,24 +343,37 @@ export async function POST(request: NextRequest) {
           fileContent: fileContent
         }
 
-        // Save to upload history API
         await fetch(`${request.nextUrl.origin}/api/upload-history`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(uploadHistoryEntry)
         })
 
-        console.log('Upload history saved successfully')
+        console.log('📋 Upload history saved successfully')
       } catch (historyError) {
         console.error('Failed to save upload history:', historyError)
-        // Don't fail the upload if history save fails
       }
 
-      return NextResponse.json({ 
-        success: true, 
-        recordsProcessed: savedRecords.length,
-        message: `Successfully uploaded and saved ${savedRecords.length} attendance records for ${date}`
-      })
+      // Return appropriate response
+      if (savedRecords.length === 0) {
+        return NextResponse.json({
+          error: `Failed to process any records. Errors: ${errors.map(e => `${e.employeeCode}: ${e.error}`).join(', ')}`
+        }, { status: 400 })
+      } else if (errors.length > 0) {
+        return NextResponse.json({
+          success: true,
+          recordsProcessed: savedRecords.length,
+          recordsFailed: errors.length,
+          message: `Partially successful: ${savedRecords.length} records saved, ${errors.length} failed`,
+          errors: errors
+        })
+      } else {
+        return NextResponse.json({
+          success: true,
+          recordsProcessed: savedRecords.length,
+          message: `Successfully uploaded and saved all ${savedRecords.length} attendance records for ${date}`
+        })
+      }
 
     } catch (parseError) {
       console.error('Parse error:', parseError)
@@ -357,9 +383,14 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('Upload error:', error)
+    console.error('Upload error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
+      error: error
+    })
     return NextResponse.json({ 
-      error: 'Internal server error during file upload' 
+      error: error instanceof Error ? error.message : 'Internal server error during file upload',
+      details: error instanceof Error ? error.stack : 'No additional details'
     }, { status: 500 })
   }
 }
