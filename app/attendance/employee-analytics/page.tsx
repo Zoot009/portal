@@ -201,11 +201,38 @@ export default function EmployeeAnalyticsPage() {
     })
   }
 
-  // Fetch attendance records for analytics (fetch all data once)
+  // Calculate date ranges based on cycle filter
+  const getDateRange = () => {
+    if (salaryCycleFilter === 'current') {
+      return {
+        startDate: currentCycle.start.toISOString().split('T')[0],
+        endDate: currentCycle.end.toISOString().split('T')[0]
+      }
+    } else if (salaryCycleFilter === 'previous') {
+      return {
+        startDate: previousCycle.start.toISOString().split('T')[0],
+        endDate: previousCycle.end.toISOString().split('T')[0]
+      }
+    }
+    return null // All cycles - no date filter
+  }
+
+  // Fetch attendance records for analytics based on selected cycle
   const { data: attendanceData, isLoading } = useQuery({
-    queryKey: ['attendance-analytics-all'],
+    queryKey: ['attendance-analytics', salaryCycleFilter],
     queryFn: async () => {
-      const response = await fetch('/api/attendance/records')
+      const dateRange = getDateRange()
+      let url = '/api/attendance/records'
+      
+      if (dateRange) {
+        const params = new URLSearchParams({
+          startDate: dateRange.startDate,
+          endDate: dateRange.endDate
+        })
+        url += `?${params.toString()}`
+      }
+      
+      const response = await fetch(url)
       if (!response.ok) throw new Error('Failed to fetch attendance data')
       const result = await response.json()
       return result.records || []
@@ -314,7 +341,7 @@ export default function EmployeeAnalyticsPage() {
                 setCurrentPage(1)
               }}>
                 <SelectTrigger className="w-52 h-10">
-                  <SelectValue placeholder={`Current Cycle (${currentCycleLabel})`} />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Cycles</SelectItem>
@@ -329,14 +356,45 @@ export default function EmployeeAnalyticsPage() {
         </div>
       </div>
 
+      {/* Summary Info */}
+      {!isLoading && (
+        <div className="flex items-center justify-between mb-6 p-4 bg-muted/50 rounded-lg">
+          <div className="flex items-center gap-4">
+            <div className="text-sm">
+              <span className="font-medium">Data Period: </span>
+              <span>
+                {salaryCycleFilter === 'current' && `Current Cycle (${currentCycleLabel})`}
+                {salaryCycleFilter === 'previous' && `Previous Cycle (${previousCycleLabel})`}
+                {salaryCycleFilter === 'all' && 'All Cycles'}
+              </span>
+            </div>
+            {analytics.length > 0 && (
+              <div className="text-sm text-muted-foreground">
+                • {analytics.length} employees • {analytics.reduce((sum, emp) => sum + emp.totalHours, 0).toFixed(1)} total hours
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Analytics Table */}
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="text-center py-12">Loading...</div>
+            <div className="text-center py-12">
+              <div className="inline-flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                <span>Loading analytics data...</span>
+              </div>
+            </div>
           ) : sortedAnalytics.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-muted-foreground">No employees found matching your criteria</p>
+              {salaryCycleFilter !== 'all' && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  Try selecting "All Cycles" or a different time period
+                </p>
+              )}
             </div>
           ) : (
             <Table>
