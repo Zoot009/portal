@@ -213,6 +213,8 @@ export async function GET(request: NextRequest) {
     // Get query parameters
     const { searchParams } = new URL(request.url)
     const editedOnly = searchParams.get('edited') === 'true'
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
     
     // Build the query conditions
     const whereCondition: any = {}
@@ -220,6 +222,29 @@ export async function GET(request: NextRequest) {
     // Filter for edited records only if requested
     if (editedOnly) {
       whereCondition.hasBeenEdited = true
+    }
+    
+    // Add date filtering if provided
+    if (startDate && endDate) {
+      // Ensure we include the full day by setting time boundaries
+      const startDateTime = new Date(startDate)
+      startDateTime.setUTCHours(0, 0, 0, 0) // Start of day
+      
+      const endDateTime = new Date(endDate)
+      endDateTime.setUTCHours(23, 59, 59, 999) // End of day
+      
+      whereCondition.date = {
+        gte: startDateTime,
+        lte: endDateTime
+      }
+      console.log('Date filtering applied:', { 
+        startDate, 
+        endDate,
+        startDateTime: startDateTime.toISOString(),
+        endDateTime: endDateTime.toISOString()
+      })
+    } else if (startDate || endDate) {
+      console.warn('Only one date parameter provided, both startDate and endDate are needed for filtering')
     }
     
     // Fetch records from Prisma database

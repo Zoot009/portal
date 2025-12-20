@@ -2,25 +2,68 @@
 
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { 
-  Search, 
-  Users, 
-  Clock, 
-  TrendingUp, 
-  TrendingDown, 
-  BarChart3,
-  ChevronLeft,
+  Select,
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select'
+import { 
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table'
+import { 
+  Search,
+  ChevronLeft, 
   ChevronRight
 } from 'lucide-react'
-import { toast } from 'sonner'
-import { getCurrentPayCycle, getPayCycleByOffset, formatPayCyclePeriod } from '@/lib/pay-cycle-utils'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+
+// Helper function to get pay cycle dates (6th to 5th cycle)
+function getPayCycleDates(referenceDate: Date) {
+  const year = referenceDate.getFullYear()
+  const month = referenceDate.getMonth()
+  const day = referenceDate.getDate()
+  
+  // If we're before the 6th, the cycle started last month
+  // If we're on or after the 6th, the cycle started this month
+  let cycleStartMonth = month
+  let cycleStartYear = year
+  
+  if (day < 6) {
+    cycleStartMonth = month - 1
+    if (cycleStartMonth < 0) {
+      cycleStartMonth = 11
+      cycleStartYear = year - 1
+    }
+  }
+  
+  // Create start date: 6th of the cycle start month (using UTC to avoid timezone issues)
+  const start = new Date(Date.UTC(cycleStartYear, cycleStartMonth, 6, 0, 0, 0, 0))
+  
+  // End date is 5th of next month
+  let cycleEndMonth = cycleStartMonth + 1
+  let cycleEndYear = cycleStartYear
+  
+  if (cycleEndMonth > 11) {
+    cycleEndMonth = 0
+    cycleEndYear = cycleStartYear + 1
+  }
+  
+  // Create end date: 5th of the cycle end month (using UTC to avoid timezone issues)
+  const end = new Date(Date.UTC(cycleEndYear, cycleEndMonth, 5, 23, 59, 59, 999))
+  
+  return { start, end }
+}
 
 interface EmployeeAnalytics {
   employeeId: number
@@ -38,26 +81,80 @@ interface EmployeeAnalytics {
 
 export default function EmployeeAnalyticsPage() {
   const [employeeSearch, setEmployeeSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
   const [salaryCycleFilter, setSalaryCycleFilter] = useState('current')
-  const [sortBy, setSortBy] = useState('presentDays')
-
-  // Calculate dynamic pay cycles
-  const currentCycle = getCurrentPayCycle()
-  const previousCycle = getPayCycleByOffset(-1)
-  const currentCycleLabel = formatPayCyclePeriod(currentCycle.start, currentCycle.end)
-  const previousCycleLabel = formatPayCyclePeriod(previousCycle.start, previousCycle.end)
-  const [sortOrder, setSortOrder] = useState('desc')
   const [currentPage, setCurrentPage] = useState(1)
   const [recordsPerPage, setRecordsPerPage] = useState(10)
+  const [sortBy, setSortBy] = useState('presentDays')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
-  // Helper function to convert decimal hours to hh:mm format
-  const formatHoursToHHMM = (decimalHours: number): string => {
-    if (!decimalHours || decimalHours === 0) return '00:00'
-    const hours = Math.floor(decimalHours)
-    const minutes = Math.round((decimalHours % 1) * 60)
-    const hoursStr = hours >= 100 ? hours.toString() : hours.toString().padStart(2, '0')
-    return `${hoursStr}:${minutes.toString().padStart(2, '0')}`
+  // Get pay cycle dates
+  const currentCycle = getPayCycleDates(new Date())
+  // For previous cycle, get the cycle that ended just before current cycle started
+  const previousCycleDate = new Date(currentCycle.start.getTime() - 1) // One day before current cycle starts
+  const previousCycle = getPayCycleDates(previousCycleDate)
+
+  // Format cycle labels - simplified to show just the cycle pattern
+  const currentCycleLabel = '6-5'
+  const previousCycleLabel = '6-5'
+
+  // Format hours to HH:MM display
+  function formatHoursToHHMM(totalHours: number): string {
+    if (!totalHours || totalHours === 0) return "00:00"
+    
+    const hours = Math.floor(totalHours)
+    const minutes = Math.round((totalHours - hours) * 60)
+    
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+  }
+
+  // Format time for calculation purposes
+  function formatTimeForCalc(timeString: string | null): Date | null {
+    if (!timeString) return null
+    
+    try {
+      const date = new Date(timeString)
+      if (isNaN(date.getTime())) return null
+      return date
+    } catch {
+      return null
+    }
+  }
+
+  // Calculate total working hours using live calculation method with UTC
+  const calculateTotalHoursLive = (
+    checkInTime: string | null, 
+    breakInTime: string | null, 
+    breakOutTime: string | null, 
+    checkOutTime: string | null, 
+    overtime: number = 0
+  ): number => {
+    try {
+      const checkIn = formatTimeForCalc(checkInTime)
+      const checkOut = formatTimeForCalc(checkOutTime)
+      
+      if (!checkIn || !checkOut) return 0
+      
+      // Calculate total work time in milliseconds, then convert to minutes
+      const totalWorkMinutes = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60)
+      
+      // Calculate break duration in minutes
+      let breakDurationMinutes = 0
+      const breakIn = formatTimeForCalc(breakInTime)
+      const breakOut = formatTimeForCalc(breakOutTime)
+      
+      if (breakIn && breakOut) {
+        breakDurationMinutes = (breakOut.getTime() - breakIn.getTime()) / (1000 * 60)
+      }
+      
+      // Subtract break time and add overtime (convert overtime from hours to minutes)
+      const effectiveWorkMinutes = Math.max(0, totalWorkMinutes - breakDurationMinutes) + (overtime * 60)
+      
+      // Convert back to decimal hours
+      return Math.max(0, effectiveWorkMinutes) / 60
+    } catch (error) {
+      console.error('Error calculating total hours:', error)
+      return 0
+    }
   }
 
   // Process attendance data to generate analytics
@@ -65,12 +162,12 @@ export default function EmployeeAnalyticsPage() {
     const employeeMap = new Map<number, any>()
     
     records.forEach(record => {
-      const empId = record.employeeId
+      const empId = parseInt(record.employeeId)
       if (!employeeMap.has(empId)) {
         employeeMap.set(empId, {
           employeeId: empId,
-          employeeName: record.employee.name,
-          employeeCode: record.employee.employeeCode,
+          employeeName: record.employeeName,
+          employeeCode: record.employeeCode,
           records: [],
           totalHours: 0,
           presentDays: 0,
@@ -84,12 +181,18 @@ export default function EmployeeAnalyticsPage() {
       
       if (record.status === 'PRESENT') {
         emp.presentDays++
-        // Use the actual totalHours stored in database instead of recalculating
-        const actualHours = record.totalHours || 0
-        emp.totalHours += actualHours
+        // Use live calculation for accurate hours
+        const liveHours = calculateTotalHoursLive(
+          record.checkInTime,
+          record.breakInTime,
+          record.breakOutTime,
+          record.checkOutTime,
+          record.overtime || 0
+        )
+        emp.totalHours += liveHours
         
         // Only count days that actually have working hours for average calculation
-        if (actualHours > 0) {
+        if (liveHours > 0) {
           emp.daysWithHours++
         }
       } else {
@@ -120,41 +223,35 @@ export default function EmployeeAnalyticsPage() {
     })
   }
 
-  // Fetch attendance records for analytics with cycle filtering
+  // Fetch attendance records for analytics with pay cycle filtering
   const { data: attendanceData, isLoading } = useQuery({
-    queryKey: ['attendance-analytics', salaryCycleFilter],
+    queryKey: ['attendance-analytics', salaryCycleFilter, currentCycle.start.toISOString(), previousCycle.start.toISOString()],
     queryFn: async () => {
       const params = new URLSearchParams()
       
-      // Apply cycle filtering like in attendance panel
-      if (salaryCycleFilter !== 'all') {
-        let cycleStart: string, cycleEnd: string
-        
-        if (salaryCycleFilter === 'current') {
-          cycleStart = currentCycle.start
-          cycleEnd = currentCycle.end
-        } else if (salaryCycleFilter === 'previous') {
-          cycleStart = previousCycle.start
-          cycleEnd = previousCycle.end
-        } else {
-          // Default to current cycle
-          cycleStart = currentCycle.start
-          cycleEnd = currentCycle.end
-        }
-        
-        params.append('startDate', cycleStart)
-        params.append('endDate', cycleEnd)
+      if (salaryCycleFilter === 'current') {
+        const startDate = currentCycle.start.toISOString().split('T')[0]
+        const endDate = currentCycle.end.toISOString().split('T')[0]
+        params.append('startDate', startDate)
+        params.append('endDate', endDate)
+      } else if (salaryCycleFilter === 'previous') {
+        const startDate = previousCycle.start.toISOString().split('T')[0]
+        const endDate = previousCycle.end.toISOString().split('T')[0]
+        params.append('startDate', startDate)
+        params.append('endDate', endDate)
       }
+      // For 'all' cycles, don't add any date parameters
       
-      const response = await fetch(`/api/attendance?${params.toString()}`)
+      const url = `/api/attendance/records${params.toString() ? '?' + params.toString() : ''}`
+      
+      const response = await fetch(url)
       if (!response.ok) throw new Error('Failed to fetch attendance data')
       const result = await response.json()
-      return result.data || []
+      return result.records || []
     },
-    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
-    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+    staleTime: 0, // Don't use stale data
+    gcTime: 0, // Don't cache
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
     retry: 1
   })
 
@@ -201,12 +298,12 @@ export default function EmployeeAnalyticsPage() {
     setCurrentPage(1)
   }
 
-  // Calculate summary statistics based on filtered data
-  const totalEmployees = filteredAnalytics.length
-  const avgAttendanceRate = filteredAnalytics.length > 0 
-    ? filteredAnalytics.reduce((sum, emp) => sum + emp.attendanceRate, 0) / filteredAnalytics.length 
+  // Calculate summary statistics
+  const totalEmployees = analytics.length
+  const avgAttendanceRate = analytics.length > 0 
+    ? analytics.reduce((sum, emp) => sum + emp.attendanceRate, 0) / analytics.length 
     : 0
-  const totalHoursWorked = filteredAnalytics.reduce((sum, emp) => sum + emp.totalHours, 0)
+  const totalHoursWorked = analytics.reduce((sum, emp) => sum + emp.totalHours, 0)
 
   const getAttendanceRateColor = (rate: number) => {
     if (rate >= 95) return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
@@ -221,46 +318,8 @@ export default function EmployeeAnalyticsPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">Employee Analytics</h1>
-          <p className="text-muted-foreground">
-            Analyze employee attendance patterns and performance
-            {salaryCycleFilter === 'current' && ` • ${currentCycleLabel}`}
-            {salaryCycleFilter === 'previous' && ` • ${previousCycleLabel}`}
-            {salaryCycleFilter === 'all' && ' • All Cycles'}
-          </p>
+          <p className="text-muted-foreground">Analyze employee attendance patterns and performance</p>
         </div>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <Card>
-          <CardContent className="flex items-center p-6">
-            <Users className="h-8 w-8 text-blue-600" />
-            <div className="ml-4">
-              <p className="text-2xl font-bold">{totalEmployees}</p>
-              <p className="text-muted-foreground">Total Employees</p>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="flex items-center p-6">
-            <Clock className="h-8 w-8 text-green-600" />
-            <div className="ml-4">
-              <p className="text-2xl font-bold">{formatHoursToHHMM(totalHoursWorked)}</p>
-              <p className="text-muted-foreground">Total Hours Worked</p>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="flex items-center p-6">
-            <BarChart3 className="h-8 w-8 text-purple-600" />
-            <div className="ml-4">
-              <p className="text-2xl font-bold">{avgAttendanceRate.toFixed(1)}%</p>
-              <p className="text-muted-foreground">Avg Attendance Rate</p>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Filter & Search */}
@@ -303,8 +362,6 @@ export default function EmployeeAnalyticsPage() {
               </Select>
             </div>
           </div>
-
-
         </div>
       </div>
 
@@ -325,8 +382,7 @@ export default function EmployeeAnalyticsPage() {
                   <TableHead className="text-left font-medium">Code</TableHead>
                   <TableHead className="text-center font-medium">Present Days</TableHead>
                   <TableHead className="text-center font-medium">Total Hours</TableHead>
-                  <TableHead className="text-center font-medium">Avg Hours/Day</TableHead>
-                  <TableHead className="text-center font-medium pr-6">Attendance Rate</TableHead>
+                  <TableHead className="text-center font-medium pr-6">Avg Hours/Day</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -357,13 +413,8 @@ export default function EmployeeAnalyticsPage() {
                   <TableCell className="text-center font-mono text-sm font-medium">
                     {formatHoursToHHMM(employee.totalHours)}
                   </TableCell>
-                  <TableCell className="text-center font-mono text-sm">
+                  <TableCell className="text-center font-mono text-sm pr-6">
                     {formatHoursToHHMM(employee.averageHoursPerDay)}
-                  </TableCell>
-                  <TableCell className="text-center pr-6">
-                    <Badge className={getAttendanceRateColor(employee.attendanceRate)}>
-                      {employee.attendanceRate.toFixed(1)}%
-                    </Badge>
                   </TableCell>
                 </TableRow>
               ))}
