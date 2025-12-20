@@ -60,81 +60,6 @@ export default function EmployeeAnalyticsPage() {
     return `${hoursStr}:${minutes.toString().padStart(2, '0')}`
   }
 
-  // Helper function to calculate total hours live (same as employee dashboard)
-  const calculateTotalHoursLive = (checkIn: string | null, breakIn: string | null, breakOut: string | null, checkOut: string | null, overtime: number): number => {
-    if (!checkIn || !checkOut) return 0
-    
-    try {
-      // Format times to HH:MM
-      const formatTimeForCalc = (dateString: string | null): string => {
-        if (!dateString) return ''
-        try {
-          const date = new Date(dateString)
-          if (isNaN(date.getTime())) return ''
-          const hours = date.getUTCHours().toString().padStart(2, '0')
-          const minutes = date.getUTCMinutes().toString().padStart(2, '0')
-          return `${hours}:${minutes}`
-        } catch {
-          return ''
-        }
-      }
-
-      const checkInTime = formatTimeForCalc(checkIn)
-      const checkOutTime = formatTimeForCalc(checkOut)
-      const breakInTime = formatTimeForCalc(breakIn)
-      const breakOutTime = formatTimeForCalc(breakOut)
-      
-      if (!checkInTime || !checkOutTime) return 0
-      
-      // Parse check-in and check-out times
-      const checkInParts = checkInTime.split(':').map(Number)
-      const checkOutParts = checkOutTime.split(':').map(Number)
-      
-      if (checkInParts.length !== 2 || checkOutParts.length !== 2) return 0
-      if (checkInParts.some(isNaN) || checkOutParts.some(isNaN)) return 0
-      
-      const [checkInHours, checkInMinutes] = checkInParts
-      const [checkOutHours, checkOutMinutes] = checkOutParts
-      
-      // Convert to total minutes
-      const checkInTotalMinutes = checkInHours * 60 + checkInMinutes
-      const checkOutTotalMinutes = checkOutHours * 60 + checkOutMinutes
-      
-      // Calculate work time (check-out minus check-in)
-      if (checkOutTotalMinutes <= checkInTotalMinutes) return 0
-      let totalWorkMinutes = checkOutTotalMinutes - checkInTotalMinutes
-      
-      // Subtract break time if both break times are provided
-      if (breakInTime && breakOutTime) {
-        const breakInParts = breakInTime.split(':').map(Number)
-        const breakOutParts = breakOutTime.split(':').map(Number)
-        
-        if (breakInParts.length === 2 && breakOutParts.length === 2 && 
-            !breakInParts.some(isNaN) && !breakOutParts.some(isNaN)) {
-          
-          const breakInTotalMinutes = breakInParts[0] * 60 + breakInParts[1]
-          const breakOutTotalMinutes = breakOutParts[0] * 60 + breakOutParts[1]
-          
-          // Calculate break duration
-          const breakDurationMinutes = Math.abs(breakOutTotalMinutes - breakInTotalMinutes)
-          totalWorkMinutes -= breakDurationMinutes
-        }
-      }
-      
-      // Add overtime if provided
-      if (overtime && overtime > 0) {
-        const overtimeMinutes = Math.round(overtime * 60)
-        totalWorkMinutes += overtimeMinutes
-      }
-      
-      // Convert back to decimal hours
-      return Math.max(0, totalWorkMinutes) / 60
-    } catch (error) {
-      console.error('Error calculating total hours:', error)
-      return 0
-    }
-  }
-
   // Process attendance data to generate analytics
   const processAnalytics = (records: any[]): EmployeeAnalytics[] => {
     const employeeMap = new Map<number, any>()
@@ -159,18 +84,12 @@ export default function EmployeeAnalyticsPage() {
       
       if (record.status === 'PRESENT') {
         emp.presentDays++
-        // Use live calculation for accurate hours
-        const liveHours = calculateTotalHoursLive(
-          record.checkInTime,
-          record.breakInTime,
-          record.breakOutTime,
-          record.checkOutTime,
-          record.overtime || 0
-        )
-        emp.totalHours += liveHours
+        // Use the actual totalHours stored in database instead of recalculating
+        const actualHours = record.totalHours || 0
+        emp.totalHours += actualHours
         
         // Only count days that actually have working hours for average calculation
-        if (liveHours > 0) {
+        if (actualHours > 0) {
           emp.daysWithHours++
         }
       } else {
@@ -230,12 +149,6 @@ export default function EmployeeAnalyticsPage() {
       const response = await fetch(`/api/attendance?${params.toString()}`)
       if (!response.ok) throw new Error('Failed to fetch attendance data')
       const result = await response.json()
-      console.log('Employee Analytics API Response:', {
-        salaryCycleFilter,
-        params: params.toString(),
-        dataLength: result.data?.length || 0,
-        sampleRecord: result.data?.[0]
-      })
       return result.data || []
     },
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
