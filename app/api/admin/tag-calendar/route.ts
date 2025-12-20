@@ -46,10 +46,14 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: requirements,
     })
+    
+    // Cache tag calendar data for 3 minutes
+    response.headers.set('Cache-Control', 'public, max-age=180, stale-while-revalidate=60')
+    return response
   } catch (error: any) {
     console.error('Error fetching tag calendar:', error)
     return NextResponse.json(

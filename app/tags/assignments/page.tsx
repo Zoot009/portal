@@ -58,32 +58,51 @@ export default function TagAssignmentsPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [dayRequirements, setDayRequirements] = useState<DayRequirement[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
 
-  // Fetch data
+  // Fetch data with caching
   useEffect(() => {
     fetchData();
   }, []);
 
-  const fetchData = async () => {
+  // Refetch data every 5 minutes to keep it fresh
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!loading) {
+        fetchData();
+      }
+    }, 300000); // 5 minutes
+
+    return () => clearInterval(interval);
+  }, [loading]);
+
+  const fetchData = async (useCache = true) => {
     try {
       setLoading(true);
-      const assignmentsRes = await fetch('/api/assignments');
+      
+      // Add cache control headers for client-side caching
+      const fetchOptions: RequestInit = {
+        cache: useCache ? 'default' : 'no-cache',
+        next: useCache ? { revalidate: 120 } : { revalidate: 0 },
+      };
+      
+      const assignmentsRes = await fetch('/api/assignments', fetchOptions);
       const assignmentsData = await assignmentsRes.json();
       const assignmentsArray = assignmentsData.data || assignmentsData.assignments || [];
       setAssignments(assignmentsArray);
 
-      // Fetch day requirements for all employees who have assignments
+      // Fetch day requirements for all employees who have assignments with caching
       const employeeIds = [...new Set(assignmentsArray.map((a: Assignment) => a.employeeId))];
       const allRequirements: DayRequirement[] = [];
       
       for (const employeeId of employeeIds) {
         try {
-          const reqRes = await fetch(`/api/admin/tag-calendar?employeeId=${employeeId}`);
+          const reqRes = await fetch(`/api/admin/tag-calendar?employeeId=${employeeId}`, fetchOptions);
           if (reqRes.ok) {
             const reqData = await reqRes.json();
             const requirements = reqData.data || reqData.requirements || [];
@@ -95,6 +114,7 @@ export default function TagAssignmentsPage() {
       }
       
       setDayRequirements(allRequirements);
+      setLastUpdated(new Date());
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('Failed to load data');
@@ -163,7 +183,8 @@ export default function TagAssignmentsPage() {
 
       if (response.ok) {
         toast.success('Assignment deleted');
-        fetchData();
+        // Force fresh data after deletion
+        fetchData(false);
       } else {
         toast.error('Failed to delete assignment');
       }

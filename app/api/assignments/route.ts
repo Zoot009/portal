@@ -7,9 +7,44 @@ const prisma = new PrismaClient()
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
+    const id = searchParams.get('id')
     const employeeId = searchParams.get('employeeId')
     const tagId = searchParams.get('tagId')
     const mandatoryOnly = searchParams.get('mandatoryOnly')
+
+    // If ID is provided, return single assignment
+    if (id) {
+      const assignment = await prisma.assignment.findUnique({
+        where: { id: parseInt(id) },
+        include: {
+          employee: {
+            select: {
+              id: true,
+              name: true,
+              employeeCode: true,
+              email: true,
+              role: true,
+            },
+          },
+          tag: true,
+        },
+      })
+
+      if (!assignment) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Assignment not found',
+          },
+          { status: 404 }
+        )
+      }
+
+      return NextResponse.json({
+        success: true,
+        data: assignment,
+      })
+    }
 
     const where: any = {}
 
@@ -44,11 +79,15 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: assignments,
       count: assignments.length,
     })
+    
+    // Cache assignments list for 2 minutes with stale-while-revalidate
+    response.headers.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=30')
+    return response
   } catch (error: any) {
     console.error('Error fetching assignments:', error)
     return NextResponse.json(
@@ -154,13 +193,49 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { isMandatory } = body
+    const { employeeId, tagId, isMandatory } = body
+
+    // Build update data object dynamically
+    const updateData: any = {}
+    
+    if (employeeId !== undefined) {
+      updateData.employeeId = parseInt(employeeId)
+    }
+    
+    if (tagId !== undefined) {
+      updateData.tagId = parseInt(tagId)
+    }
+    
+    if (isMandatory !== undefined) {
+      updateData.isMandatory = isMandatory
+    }
+
+    // If updating employee or tag, check if the combination already exists
+    if (employeeId && tagId) {
+      const existing = await prisma.assignment.findUnique({
+        where: {
+          employee_tag: {
+            employeeId: parseInt(employeeId),
+            tagId: parseInt(tagId),
+          },
+        },
+      })
+
+      // Check if the existing assignment is not the one we're updating
+      if (existing && existing.id !== parseInt(id)) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Assignment already exists for this employee and tag combination',
+          },
+          { status: 400 }
+        )
+      }
+    }
 
     const assignment = await prisma.assignment.update({
       where: { id: parseInt(id) },
-      data: {
-        isMandatory,
-      },
+      data: updateData,
       include: {
         employee: {
           select: {

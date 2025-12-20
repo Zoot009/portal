@@ -68,13 +68,17 @@ export default function EditAssignmentPage() {
       const employeesData = await employeesRes.json();
       const assignmentData = await assignmentRes.json();
 
+      if (!assignmentData.success) {
+        toast.error(assignmentData.error || 'Assignment not found');
+        router.push('/tags/assignments');
+        return;
+      }
+
       setTags(tagsData.data?.filter((t: Tag) => t.isActive) || []);
       setEmployees(employeesData.data || []);
 
-      // Find the specific assignment
-      const assignment = assignmentData.assignments?.find(
-        (a: Assignment) => a.id === parseInt(assignmentId)
-      );
+      // Get the assignment directly from the response
+      const assignment = assignmentData.data;
 
       if (assignment) {
         setSelectedEmployee(assignment.employeeId.toString());
@@ -87,6 +91,7 @@ export default function EditAssignmentPage() {
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('Failed to load data');
+      router.push('/tags/assignments');
     } finally {
       setLoading(false);
     }
@@ -103,14 +108,9 @@ export default function EditAssignmentPage() {
     try {
       setSubmitting(true);
 
-      // Delete old assignment
-      await fetch(`/api/assignments?id=${assignmentId}`, {
-        method: 'DELETE'
-      });
-
-      // Create new assignment with updated values
-      const response = await fetch('/api/assignments', {
-        method: 'POST',
+      // Update assignment using PATCH
+      const response = await fetch(`/api/assignments?id=${assignmentId}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           employeeId: parseInt(selectedEmployee),
@@ -119,11 +119,13 @@ export default function EditAssignmentPage() {
         })
       });
 
+      const data = await response.json();
+
       if (response.ok) {
         toast.success('Assignment updated successfully');
         router.push('/tags/assignments');
       } else {
-        toast.error('Failed to update assignment');
+        toast.error(data.error || 'Failed to update assignment');
       }
     } catch (error) {
       console.error('Error updating assignment:', error);

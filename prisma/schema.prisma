@@ -166,7 +166,7 @@ model SubmissionStatus {
   submissionDate DateTime @map("submission_date")
   submissionTime DateTime @default(now()) @map("submission_time")
   isLocked       Boolean  @default(true) @map("is_locked")
-  totalMinutes   Int      @default(0) @map("total_minutes")
+  totalMinutes   Int      @default(0) @map("total _minutes")
   statusMessage  String   @default("Data submitted successfully") @map("status_message")
   employee       Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
