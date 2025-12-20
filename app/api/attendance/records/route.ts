@@ -213,8 +213,6 @@ export async function GET(request: NextRequest) {
     // Get query parameters
     const { searchParams } = new URL(request.url)
     const editedOnly = searchParams.get('edited') === 'true'
-    const startDate = searchParams.get('startDate')
-    const endDate = searchParams.get('endDate')
     
     // Build the query conditions
     const whereCondition: any = {}
@@ -222,14 +220,6 @@ export async function GET(request: NextRequest) {
     // Filter for edited records only if requested
     if (editedOnly) {
       whereCondition.hasBeenEdited = true
-    }
-    
-    // Add date range filtering if provided
-    if (startDate && endDate) {
-      whereCondition.date = {
-        gte: new Date(startDate),
-        lte: new Date(endDate)
-      }
     }
     
     // Fetch records from Prisma database

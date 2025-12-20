@@ -140,12 +140,12 @@ export default function EmployeeAnalyticsPage() {
     const employeeMap = new Map<number, any>()
     
     records.forEach(record => {
-      const empId = parseInt(record.employeeId)
+      const empId = record.employeeId
       if (!employeeMap.has(empId)) {
         employeeMap.set(empId, {
           employeeId: empId,
-          employeeName: record.employeeName,
-          employeeCode: record.employeeCode,
+          employeeName: record.employee.name,
+          employeeCode: record.employee.employeeCode,
           records: [],
           totalHours: 0,
           presentDays: 0,
@@ -201,44 +201,45 @@ export default function EmployeeAnalyticsPage() {
     })
   }
 
-  // Calculate date ranges based on cycle filter
-  const getDateRange = () => {
-    if (salaryCycleFilter === 'current') {
-      return {
-        startDate: currentCycle.start.toISOString().split('T')[0],
-        endDate: currentCycle.end.toISOString().split('T')[0]
-      }
-    } else if (salaryCycleFilter === 'previous') {
-      return {
-        startDate: previousCycle.start.toISOString().split('T')[0],
-        endDate: previousCycle.end.toISOString().split('T')[0]
-      }
-    }
-    return null // All cycles - no date filter
-  }
-
-  // Fetch attendance records for analytics based on selected cycle
+  // Fetch attendance records for analytics with cycle filtering
   const { data: attendanceData, isLoading } = useQuery({
     queryKey: ['attendance-analytics', salaryCycleFilter],
     queryFn: async () => {
-      const dateRange = getDateRange()
-      let url = '/api/attendance/records'
+      const params = new URLSearchParams()
       
-      if (dateRange) {
-        const params = new URLSearchParams({
-          startDate: dateRange.startDate,
-          endDate: dateRange.endDate
-        })
-        url += `?${params.toString()}`
+      // Apply cycle filtering like in attendance panel
+      if (salaryCycleFilter !== 'all') {
+        let cycleStart: string, cycleEnd: string
+        
+        if (salaryCycleFilter === 'current') {
+          cycleStart = currentCycle.start
+          cycleEnd = currentCycle.end
+        } else if (salaryCycleFilter === 'previous') {
+          cycleStart = previousCycle.start
+          cycleEnd = previousCycle.end
+        } else {
+          // Default to current cycle
+          cycleStart = currentCycle.start
+          cycleEnd = currentCycle.end
+        }
+        
+        params.append('startDate', cycleStart)
+        params.append('endDate', cycleEnd)
       }
       
-      const response = await fetch(url)
+      const response = await fetch(`/api/attendance?${params.toString()}`)
       if (!response.ok) throw new Error('Failed to fetch attendance data')
       const result = await response.json()
-      return result.records || []
+      console.log('Employee Analytics API Response:', {
+        salaryCycleFilter,
+        params: params.toString(),
+        dataLength: result.data?.length || 0,
+        sampleRecord: result.data?.[0]
+      })
+      return result.data || []
     },
-    staleTime: 10 * 60 * 1000, // Consider data fresh for 10 minutes
-    gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes (renamed from cacheTime)
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
     refetchOnWindowFocus: false,
     refetchOnMount: false,
     retry: 1
@@ -287,12 +288,12 @@ export default function EmployeeAnalyticsPage() {
     setCurrentPage(1)
   }
 
-  // Calculate summary statistics
-  const totalEmployees = analytics.length
-  const avgAttendanceRate = analytics.length > 0 
-    ? analytics.reduce((sum, emp) => sum + emp.attendanceRate, 0) / analytics.length 
+  // Calculate summary statistics based on filtered data
+  const totalEmployees = filteredAnalytics.length
+  const avgAttendanceRate = filteredAnalytics.length > 0 
+    ? filteredAnalytics.reduce((sum, emp) => sum + emp.attendanceRate, 0) / filteredAnalytics.length 
     : 0
-  const totalHoursWorked = analytics.reduce((sum, emp) => sum + emp.totalHours, 0)
+  const totalHoursWorked = filteredAnalytics.reduce((sum, emp) => sum + emp.totalHours, 0)
 
   const getAttendanceRateColor = (rate: number) => {
     if (rate >= 95) return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
@@ -307,8 +308,46 @@ export default function EmployeeAnalyticsPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">Employee Analytics</h1>
-          <p className="text-muted-foreground">Analyze employee attendance patterns and performance</p>
+          <p className="text-muted-foreground">
+            Analyze employee attendance patterns and performance
+            {salaryCycleFilter === 'current' && ` • ${currentCycleLabel}`}
+            {salaryCycleFilter === 'previous' && ` • ${previousCycleLabel}`}
+            {salaryCycleFilter === 'all' && ' • All Cycles'}
+          </p>
         </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <Card>
+          <CardContent className="flex items-center p-6">
+            <Users className="h-8 w-8 text-blue-600" />
+            <div className="ml-4">
+              <p className="text-2xl font-bold">{totalEmployees}</p>
+              <p className="text-muted-foreground">Total Employees</p>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="flex items-center p-6">
+            <Clock className="h-8 w-8 text-green-600" />
+            <div className="ml-4">
+              <p className="text-2xl font-bold">{formatHoursToHHMM(totalHoursWorked)}</p>
+              <p className="text-muted-foreground">Total Hours Worked</p>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="flex items-center p-6">
+            <BarChart3 className="h-8 w-8 text-purple-600" />
+            <div className="ml-4">
+              <p className="text-2xl font-bold">{avgAttendanceRate.toFixed(1)}%</p>
+              <p className="text-muted-foreground">Avg Attendance Rate</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filter & Search */}
@@ -341,7 +380,7 @@ export default function EmployeeAnalyticsPage() {
                 setCurrentPage(1)
               }}>
                 <SelectTrigger className="w-52 h-10">
-                  <SelectValue />
+                  <SelectValue placeholder={`Current Cycle (${currentCycleLabel})`} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Cycles</SelectItem>
@@ -356,45 +395,14 @@ export default function EmployeeAnalyticsPage() {
         </div>
       </div>
 
-      {/* Summary Info */}
-      {!isLoading && (
-        <div className="flex items-center justify-between mb-6 p-4 bg-muted/50 rounded-lg">
-          <div className="flex items-center gap-4">
-            <div className="text-sm">
-              <span className="font-medium">Data Period: </span>
-              <span>
-                {salaryCycleFilter === 'current' && `Current Cycle (${currentCycleLabel})`}
-                {salaryCycleFilter === 'previous' && `Previous Cycle (${previousCycleLabel})`}
-                {salaryCycleFilter === 'all' && 'All Cycles'}
-              </span>
-            </div>
-            {analytics.length > 0 && (
-              <div className="text-sm text-muted-foreground">
-                • {analytics.length} employees • {analytics.reduce((sum, emp) => sum + emp.totalHours, 0).toFixed(1)} total hours
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Analytics Table */}
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="text-center py-12">
-              <div className="inline-flex items-center gap-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                <span>Loading analytics data...</span>
-              </div>
-            </div>
+            <div className="text-center py-12">Loading...</div>
           ) : sortedAnalytics.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-muted-foreground">No employees found matching your criteria</p>
-              {salaryCycleFilter !== 'all' && (
-                <p className="text-sm text-muted-foreground mt-2">
-                  Try selecting "All Cycles" or a different time period
-                </p>
-              )}
             </div>
           ) : (
             <Table>
@@ -404,7 +412,8 @@ export default function EmployeeAnalyticsPage() {
                   <TableHead className="text-left font-medium">Code</TableHead>
                   <TableHead className="text-center font-medium">Present Days</TableHead>
                   <TableHead className="text-center font-medium">Total Hours</TableHead>
-                  <TableHead className="text-center font-medium pr-6">Avg Hours/Day</TableHead>
+                  <TableHead className="text-center font-medium">Avg Hours/Day</TableHead>
+                  <TableHead className="text-center font-medium pr-6">Attendance Rate</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -435,8 +444,13 @@ export default function EmployeeAnalyticsPage() {
                   <TableCell className="text-center font-mono text-sm font-medium">
                     {formatHoursToHHMM(employee.totalHours)}
                   </TableCell>
-                  <TableCell className="text-center font-mono text-sm pr-6">
+                  <TableCell className="text-center font-mono text-sm">
                     {formatHoursToHHMM(employee.averageHoursPerDay)}
+                  </TableCell>
+                  <TableCell className="text-center pr-6">
+                    <Badge className={getAttendanceRateColor(employee.attendanceRate)}>
+                      {employee.attendanceRate.toFixed(1)}%
+                    </Badge>
                   </TableCell>
                 </TableRow>
               ))}
