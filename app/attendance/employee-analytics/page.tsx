@@ -4,8 +4,10 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { 
   Select,
   SelectContent, 
@@ -24,46 +26,11 @@ import {
 import { 
   Search,
   ChevronLeft, 
-  ChevronRight
+  ChevronRight,
+  Info
 } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-
-// Helper function to get pay cycle dates (6th to 5th cycle)
-function getPayCycleDates(referenceDate: Date) {
-  const year = referenceDate.getFullYear()
-  const month = referenceDate.getMonth()
-  const day = referenceDate.getDate()
-  
-  // If we're before the 6th, the cycle started last month
-  // If we're on or after the 6th, the cycle started this month
-  let cycleStartMonth = month
-  let cycleStartYear = year
-  
-  if (day < 6) {
-    cycleStartMonth = month - 1
-    if (cycleStartMonth < 0) {
-      cycleStartMonth = 11
-      cycleStartYear = year - 1
-    }
-  }
-  
-  // Create start date: 6th of the cycle start month (using UTC to avoid timezone issues)
-  const start = new Date(Date.UTC(cycleStartYear, cycleStartMonth, 6, 0, 0, 0, 0))
-  
-  // End date is 5th of next month
-  let cycleEndMonth = cycleStartMonth + 1
-  let cycleEndYear = cycleStartYear
-  
-  if (cycleEndMonth > 11) {
-    cycleEndMonth = 0
-    cycleEndYear = cycleStartYear + 1
-  }
-  
-  // Create end date: 5th of the cycle end month (using UTC to avoid timezone issues)
-  const end = new Date(Date.UTC(cycleEndYear, cycleEndMonth, 5, 23, 59, 59, 999))
-  
-  return { start, end }
-}
+import { getCurrentPayCycle, getPayCycleByOffset, formatPayCyclePeriod } from '@/lib/pay-cycle-utils'
 
 interface EmployeeAnalytics {
   employeeId: number
@@ -86,16 +53,55 @@ export default function EmployeeAnalyticsPage() {
   const [recordsPerPage, setRecordsPerPage] = useState(10)
   const [sortBy, setSortBy] = useState('presentDays')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [showNetHours, setShowNetHours] = useState(false)
 
-  // Get pay cycle dates
-  const currentCycle = getPayCycleDates(new Date())
-  // For previous cycle, get the cycle that ended just before current cycle started
-  const previousCycleDate = new Date(currentCycle.start.getTime() - 1) // One day before current cycle starts
-  const previousCycle = getPayCycleDates(previousCycleDate)
-
-  // Format cycle labels - simplified to show just the cycle pattern
-  const currentCycleLabel = '6-5'
-  const previousCycleLabel = '6-5'
+  // Get dynamic pay cycles using utility functions
+  const currentCycle = getCurrentPayCycle()
+  const previousCycle = getPayCycleByOffset(-1)
+  const currentCycleLabel = formatPayCyclePeriod(currentCycle.start, currentCycle.end)
+  const previousCycleLabel = formatPayCyclePeriod(previousCycle.start, previousCycle.end)
+  
+  // Fetch break history for current employee if toggle is enabled
+  const { data: breakTimeData } = useQuery({
+    queryKey: ['admin-break-time', salaryCycleFilter, showNetHours],
+    queryFn: async () => {
+      if (!showNetHours) return {}
+      
+      const params = new URLSearchParams()
+      
+      if (salaryCycleFilter === 'current') {
+        params.append('startDate', currentCycle.start.toISOString().split('T')[0])
+        params.append('endDate', currentCycle.end.toISOString().split('T')[0])
+      } else if (salaryCycleFilter === 'previous') {
+        params.append('startDate', previousCycle.start.toISOString().split('T')[0])
+        params.append('endDate', previousCycle.end.toISOString().split('T')[0])
+      }
+      
+      const response = await fetch(`/api/breaks/history?${params.toString()}`)
+      if (!response.ok) return {}
+      
+      const result = await response.json()
+      const breakMap: Record<string, number> = {}
+      
+      if (result.breaks && Array.isArray(result.breaks)) {
+        result.breaks.forEach((breakRecord: any) => {
+          const key = `${breakRecord.employeeId}-${breakRecord.date}`
+          const startTime = new Date(breakRecord.startTime)
+          const endTime = new Date(breakRecord.endTime)
+          const durationMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60)
+          
+          if (!breakMap[key]) {
+            breakMap[key] = 0
+          }
+          breakMap[key] += durationMinutes / 60 // Convert to hours
+        })
+      }
+      
+      return breakMap
+    },
+    enabled: showNetHours,
+    staleTime: 5 * 60 * 1000 // 5 minutes
+  })
 
   // Format hours to HH:MM display
   function formatHoursToHHMM(totalHours: number): string {
@@ -157,7 +163,7 @@ export default function EmployeeAnalyticsPage() {
     }
   }
 
-  // Process attendance data to generate analytics
+  // Process attendance data to generate analytics with optional break deduction
   const processAnalytics = (records: any[]): EmployeeAnalytics[] => {
     const employeeMap = new Map<number, any>()
     
@@ -182,13 +188,21 @@ export default function EmployeeAnalyticsPage() {
       if (record.status === 'PRESENT') {
         emp.presentDays++
         // Use live calculation for accurate hours
-        const liveHours = calculateTotalHoursLive(
+        let liveHours = calculateTotalHoursLive(
           record.checkInTime,
           record.breakInTime,
           record.breakOutTime,
           record.checkOutTime,
           record.overtime || 0
         )
+        
+        // If showing net hours, subtract additional break time from break history
+        if (showNetHours && breakTimeData) {
+          const breakKey = `${empId}-${record.date}`
+          const additionalBreakHours = breakTimeData[breakKey] || 0
+          liveHours = Math.max(0, liveHours - additionalBreakHours)
+        }
+        
         emp.totalHours += liveHours
         
         // Only count days that actually have working hours for average calculation
@@ -225,7 +239,7 @@ export default function EmployeeAnalyticsPage() {
 
   // Fetch attendance records for analytics with pay cycle filtering
   const { data: attendanceData, isLoading } = useQuery({
-    queryKey: ['attendance-analytics', salaryCycleFilter, currentCycle.start.toISOString(), previousCycle.start.toISOString()],
+    queryKey: ['attendance-analytics', salaryCycleFilter, showNetHours, currentCycle.start.toISOString(), previousCycle.start.toISOString()],
     queryFn: async () => {
       const params = new URLSearchParams()
       
@@ -367,6 +381,39 @@ export default function EmployeeAnalyticsPage() {
 
       {/* Analytics Table */}
       <Card>
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-medium">
+                {showNetHours ? 'Net Hours (after breaks)' : 'Total Hours'}
+              </h3>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    <p className="text-sm">
+                      Toggle between <strong>Total Hours</strong> and <strong>Net Hours (after breaks)</strong>. 
+                      Net hours calculation follows the 6-5 monthly cycle system and deducts 
+                      registered break time from the total working hours.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-muted-foreground">
+                Show break deductions
+              </span>
+              <Switch
+                checked={showNetHours}
+                onCheckedChange={setShowNetHours}
+                className="data-[state=checked]:bg-primary"
+              />
+            </div>
+          </div>
+        </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
             <div className="text-center py-12">Loading...</div>
@@ -381,7 +428,9 @@ export default function EmployeeAnalyticsPage() {
                   <TableHead className="text-left font-medium pl-6">Employee</TableHead>
                   <TableHead className="text-left font-medium">Code</TableHead>
                   <TableHead className="text-center font-medium">Present Days</TableHead>
-                  <TableHead className="text-center font-medium">Total Hours</TableHead>
+                  <TableHead className="text-center font-medium">
+                    {showNetHours ? 'Net Hours' : 'Total Hours'}
+                  </TableHead>
                   <TableHead className="text-center font-medium pr-6">Avg Hours/Day</TableHead>
                 </TableRow>
               </TableHeader>
