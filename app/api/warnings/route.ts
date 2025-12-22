@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 // GET /api/warnings - Get warnings
 export async function GET(request: NextRequest) {
@@ -181,8 +179,6 @@ async function checkAndCreateAutomaticPenalty(employeeId: number) {
       },
     })
 
-    console.log(`Employee ${employeeId} has ${warningCount} warnings in current cycle (threshold: ${settings.warningThreshold})`)
-
     // Check if threshold is reached
     if (warningCount >= settings.warningThreshold) {
       // Check if penalty already exists for this cycle to avoid duplicates
@@ -201,7 +197,6 @@ async function checkAndCreateAutomaticPenalty(employeeId: number) {
       })
 
       if (existingPenalty) {
-        console.log(`Penalty already exists for employee ${employeeId} in current cycle`)
         return
       }
 
@@ -222,8 +217,6 @@ async function checkAndCreateAutomaticPenalty(employeeId: number) {
         },
       })
 
-      console.log(`✅ Automatic penalty created for employee ${employeeId}:`, penalty.id)
-
       // Create notification for the employee
       await prisma.notification.create({
         data: {
@@ -236,8 +229,6 @@ async function checkAndCreateAutomaticPenalty(employeeId: number) {
           relatedType: 'penalty',
         },
       })
-
-      console.log(`Notification created for employee ${employeeId}`)
     }
   } catch (error) {
     console.error('Error in checkAndCreateAutomaticPenalty:', error)

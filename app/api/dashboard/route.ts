@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { getCurrentPayCycle } from '@/lib/pay-cycle-utils'
-
-const prisma = new PrismaClient()
 
 // GET /api/dashboard - Get dashboard statistics
 export async function GET(request: NextRequest) {

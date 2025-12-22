@@ -7,7 +7,9 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { CalendarIcon, Clock, Search, UserCheck, UserX, Calendar, TrendingUp, Edit, ChevronDown, ChevronUp, Loader2, CalendarCheck } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { CalendarIcon, Clock, Search, UserCheck, UserX, Calendar, TrendingUp, Edit, ChevronDown, ChevronUp, Loader2, CalendarCheck, Info } from "lucide-react"
 import React, { useState, useEffect } from "react"
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSunday, eachDayOfInterval } from "date-fns"
 
@@ -50,6 +52,8 @@ export default function MyAttendanceRecordsPage() {
   const [availableCycles, setAvailableCycles] = useState<Array<{value: string, label: string, startDate: Date, endDate: Date}>>([])
   const [expandedRecordId, setExpandedRecordId] = useState<string | null>(null)
   const [employeeInfo, setEmployeeInfo] = useState<{standardHours: number, dailyHours: number} | null>(null)
+  const [deductBreaks, setDeductBreaks] = useState(false)
+  const [totalBreakTime, setTotalBreakTime] = useState(0) // in minutes
 
   // Helper function to convert HH:MM string to decimal hours
   const timeToDecimal = (timeStr: string): number => {
@@ -130,38 +134,85 @@ export default function MyAttendanceRecordsPage() {
 
   useEffect(() => {
     // Force re-render when employee info changes
-    console.log('Employee info updated:', employeeInfo)
   }, [employeeInfo])
 
   // Recalculate when cycle filter changes
   useEffect(() => {
-    console.log('Cycle filter changed to:', cycleFilter)
   }, [cycleFilter, availableCycles])
+
+  // Fetch break time when cycle or employee info changes
+  useEffect(() => {
+    const fetchBreakData = async () => {
+      if (!employeeInfo) return
+      
+      try {
+        // Get employee ID from profile API
+        const response = await fetch('/api/employee/profile')
+        if (response.ok) {
+          const data = await response.json()
+          const employeeId = data.employee?.id
+          
+          if (employeeId) {
+            let startDate: Date, endDate: Date
+            
+            if (cycleFilter === 'all') {
+              // For "all", use a wide date range
+              startDate = new Date(2000, 0, 1)
+              endDate = new Date(2099, 11, 31)
+            } else {
+              // Find the selected cycle dates
+              const selectedCycle = availableCycles.find(c => c.value === cycleFilter)
+              if (selectedCycle) {
+                startDate = selectedCycle.startDate
+                endDate = selectedCycle.endDate
+              } else {
+                // Default to current cycle if no specific cycle selected
+                const today = new Date()
+                const currentMonth = today.getMonth()
+                const currentYear = today.getFullYear()
+                const day = today.getDate()
+                
+                // 6-5 cycle logic
+                if (day >= 6) {
+                  startDate = new Date(currentYear, currentMonth, 6)
+                  endDate = new Date(currentYear, currentMonth + 1, 5)
+                } else {
+                  startDate = new Date(currentYear, currentMonth - 1, 6)
+                  endDate = new Date(currentYear, currentMonth, 5)
+                }
+              }
+            }
+            
+            const breakMinutes = await fetchBreakTimeForCycle(employeeId, startDate, endDate)
+            setTotalBreakTime(breakMinutes)
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching break data:', error)
+        setTotalBreakTime(0)
+      }
+    }
+
+    fetchBreakData()
+  }, [cycleFilter, availableCycles, employeeInfo])
 
   async function fetchAttendanceRecords() {
     try {
       setLoading(true)
       setError(null)
       
-      console.log('[Attendance Records] Fetching from /api/employee/attendance')
       const response = await fetch('/api/employee/attendance')
-      
-      console.log('[Attendance Records] Response status:', response.status, response.ok)
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        console.error('[Attendance Records] Error response:', errorData)
         throw new Error(errorData.error || `Failed to fetch (${response.status})`)
       }
 
       const data = await response.json()
-      console.log('[Attendance Records] Received data:', data)
-      console.log('[Attendance Records] Records count:', data.records?.length || 0)
       
       setAttendanceRecords(data.records || [])
       setError(null)
     } catch (err: any) {
-      console.error('Error fetching attendance:', err)
       setError(err.message)
       
       // Auto-retry for authentication errors (auto-linking should fix it)
@@ -178,26 +229,21 @@ export default function MyAttendanceRecordsPage() {
   async function fetchEmployeeInfo() {
     try {
       const response = await fetch('/api/employee/profile')
-      console.log('Employee profile response:', response.status, response.ok)
       
       if (!response.ok) {
         throw new Error(`Failed to fetch profile: ${response.status}`)
       }
       
       const data = await response.json()
-      console.log('Employee profile data:', data)
       
       const standardHours = data.employee?.standardHours || 160 // Default to 160 hours per month
       const dailyHours = 8.20 // Default daily hours (8.20 = 8 hours 20 minutes)
       
       setEmployeeInfo({ standardHours, dailyHours })
-      console.log('Set employee info:', { standardHours, dailyHours })
     } catch (err) {
-      console.error('Error fetching employee info:', err)
       // Set default values if API fails
       const defaultInfo = { standardHours: 160, dailyHours: 8.20 } // 8.20 = 8:20
       setEmployeeInfo(defaultInfo)
-      console.log('Set default employee info:', defaultInfo)
     }
   }
 
@@ -400,6 +446,36 @@ export default function MyAttendanceRecordsPage() {
     }
   }
 
+  // Function to fetch and calculate total break time for current cycle
+  const fetchBreakTimeForCycle = async (employeeId: number, startDate: Date, endDate: Date) => {
+    try {
+      const response = await fetch(`/api/breaks/history?employeeId=${employeeId}`)
+      if (response.ok) {
+        const result = await response.json()
+        const breaks = result.data || []
+        
+        // Filter breaks within the current cycle
+        const cycleBreaks = breaks.filter((breakItem: any) => {
+          const breakDate = new Date(breakItem.breakDate)
+          return breakDate >= startDate && breakDate <= endDate && breakItem.status === 'COMPLETED'
+        })
+        
+        // Calculate total break time in minutes
+        const totalMinutes = cycleBreaks.reduce((total: number, breakItem: any) => {
+          if (breakItem.duration) {
+            return total + breakItem.duration
+          }
+          return total
+        }, 0)
+        
+        return totalMinutes
+      }
+    } catch (error) {
+      console.error('Error fetching break data:', error)
+    }
+    return 0
+  }
+
   // Calculate stats from filtered data including hours adjustments
   const stats = filteredRecords.reduce((acc, record) => {
     acc.totalRecords++
@@ -544,13 +620,41 @@ export default function MyAttendanceRecordsPage() {
       <div className="grid gap-4 md:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Hours</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <div className="flex items-center space-x-2">
+              <CardTitle className="text-sm font-medium">
+                {deductBreaks ? "Net Hours (after breaks)" : "Total Hours"}
+              </CardTitle>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">
+                    Toggle to switch between total hours and net hours after deducting breaks. 
+                    Break calculations follow the 6-5 monthly cycle.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <Switch
+              checked={deductBreaks}
+              onCheckedChange={setDeductBreaks}
+              className="scale-75"
+            />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{loading ? '-' : formatHoursToTime(currentTotalHours)}</div>
+            <div className="text-2xl font-bold">
+              {loading ? '-' : formatHoursToTime(
+                deductBreaks ? 
+                  Math.max(0, currentTotalHours - (totalBreakTime / 60)) : 
+                  currentTotalHours
+              )}
+            </div>
             <p className="text-xs text-muted-foreground">
-              Current total in filter
+              {deductBreaks ? 
+                `Total: ${formatHoursToTime(currentTotalHours)} | Breaks: ${formatHoursToTime(totalBreakTime / 60)}` :
+                "Current total in filter"
+              }
             </p>
           </CardContent>
         </Card>

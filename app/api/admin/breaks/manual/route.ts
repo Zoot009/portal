@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { auth } from '@clerk/nextjs/server'
-
-const prisma = new PrismaClient()
 
 // POST /api/admin/breaks/manual - Create a manual break entry
 export async function POST(request: NextRequest) {

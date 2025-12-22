@@ -157,14 +157,11 @@ export default function EmployeesPage() {
   const handleDeleteEmployee = async (employeeId: number, employeeName: string) => {
     if (window.confirm(`Are you sure you want to delete ${employeeName}? This will deactivate the employee account.`)) {
       try {
-        console.log('Deleting employee:', employeeId, employeeName)
         const response = await fetch(`/api/employees/${employeeId}`, {
           method: 'DELETE'
         })
 
-        console.log('Delete response status:', response.status)
         const result = await response.json()
-        console.log('Delete response data:', result)
 
         if (!response.ok) {
           throw new Error(result.error || 'Failed to delete employee')

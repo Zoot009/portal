@@ -282,7 +282,6 @@ export default function MyProfilePage() {
       
       // Delete from Supabase bucket if exists
       if (existingPath && typeof existingPath === 'string') {
-        console.log('Deleting from Supabase bucket:', existingPath)
         const { error: deleteError } = await supabase.storage
           .from('employee-documents')
           .remove([existingPath])

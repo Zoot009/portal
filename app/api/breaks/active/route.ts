@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 // GET /api/breaks/active - Get the active break session for an employee
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const employeeId = searchParams.get('employeeId')
-
-    console.log('Get active break - employeeId:', employeeId, 'Type:', typeof employeeId)
 
     if (!employeeId) {
       return NextResponse.json(

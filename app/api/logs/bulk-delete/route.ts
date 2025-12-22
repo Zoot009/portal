@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 // DELETE /api/logs/bulk-delete - Delete all logs for a specific employee on a specific date
 export async function DELETE(request: NextRequest) {

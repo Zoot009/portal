@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 // POST /api/logs/submit - Submit multiple tags for a specific date
 export async function POST(request: NextRequest) {
@@ -297,11 +295,8 @@ async function createWarningAndCheckPenalty(employeeId: number, relatedDate: Dat
       },
     })
 
-    console.log(`Warning created for employee ${employeeId}:`, warning.id)
-
     // Check if auto-create penalties is enabled
     if (!settings.autoCreate) {
-      console.log('Auto-create penalties is disabled')
       return
     }
 
@@ -317,8 +312,6 @@ async function createWarningAndCheckPenalty(employeeId: number, relatedDate: Dat
         isActive: true,
       },
     })
-
-    console.log(`Employee ${employeeId} has ${warningCount} warnings in current cycle (threshold: ${settings.warningThreshold})`)
 
     // Check if threshold is reached
     if (warningCount >= settings.warningThreshold) {
@@ -359,8 +352,6 @@ async function createWarningAndCheckPenalty(employeeId: number, relatedDate: Dat
         },
       })
 
-      console.log(`✅ Automatic penalty created for employee ${employeeId}:`, penalty.id)
-
       // Create notification for the employee
       await prisma.notification.create({
         data: {
@@ -373,8 +364,6 @@ async function createWarningAndCheckPenalty(employeeId: number, relatedDate: Dat
           relatedType: 'penalty',
         },
       })
-
-      console.log(`Notification created for employee ${employeeId}`)
     }
   } catch (error) {
     console.error('Error in createWarningAndCheckPenalty:', error)

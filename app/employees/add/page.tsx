@@ -47,8 +47,6 @@ export default function AddEmployeePage() {
       }
 
       // Simulate API call
-      console.log('Creating employee:', formData);
-      
       // Mock API delay
       await new Promise(resolve => setTimeout(resolve, 1000));
 

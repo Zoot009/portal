@@ -19,7 +19,6 @@ export default function HomePage() {
       }
 
       try {
-        console.log('Fetching employee data...')
         const response = await fetch('/api/auth/me')
         
         if (!response.ok) {
@@ -34,17 +33,13 @@ export default function HomePage() {
         }
 
         const data = await response.json()
-        console.log('Employee data:', data)
         const role = data.employee?.role
 
         if (role === 'EMPLOYEE') {
-          console.log('Redirecting to employee panel')
           router.push('/employee-panel')
         } else if (role === 'ADMIN' || role === 'TEAMLEADER') {
-          console.log('Redirecting to dashboard')
           router.push('/dashboard')
         } else {
-          console.log('Unknown role, redirecting to employee panel')
           router.push('/employee-panel')
         }
       } catch (error: any) {

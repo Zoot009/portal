@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 // POST /api/breaks/end - End the active break session
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { employeeId } = body
-
-    console.log('End break request - employeeId:', employeeId, 'Type:', typeof employeeId)
 
     if (!employeeId) {
       return NextResponse.json(

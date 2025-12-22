@@ -3,7 +3,7 @@
 // const prisma = new PrismaClient()
 
 export async function halfBreaksForEmployee(): Promise<void> {
-  console.log('Under development')
+  // Under development
 }
 
 /*

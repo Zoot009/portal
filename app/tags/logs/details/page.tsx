@@ -105,7 +105,6 @@ export default function WorkLogDetailsPage() {
       return response.json()
     },
     onSuccess: (data) => {
-      console.log('Delete successful:', data)
       toast.success(`Deleted ${data.data?.logsDeleted || 0} log(s) successfully`)
       
       // Clear all related queries - be more aggressive

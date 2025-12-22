@@ -68,38 +68,24 @@ export default function SubmitTagsPage() {
       const clerkUserId = user?.id
       if (!clerkUserId) throw new Error('No user ID found')
       
-      console.log('Fetching employee with Clerk User ID:', clerkUserId)
-      console.log('User data:', { 
-        id: user?.id, 
-        username: user?.username, 
-        email: user?.primaryEmailAddress?.emailAddress 
-      })
-      
       // First try by Clerk user ID
       let response = await fetch(`/api/employees?clerkUserId=${encodeURIComponent(clerkUserId)}`)
       if (!response.ok) throw new Error('Failed to fetch employee')
       let result = await response.json()
       
-      console.log('Employee lookup by clerkUserId result:', result)
-      
       // If found by Clerk ID, return it
       if (result.data && result.data.length > 0) {
-        console.log('Found employee by Clerk ID:', result.data[0])
         return { data: result.data[0] }
       }
       
       // Fallback: try by email or username
       const searchTerm = user?.primaryEmailAddress?.emailAddress || user?.username
       if (searchTerm) {
-        console.log('Fallback: searching by email/username:', searchTerm)
         response = await fetch(`/api/employees?search=${encodeURIComponent(searchTerm)}`)
         if (!response.ok) throw new Error('Failed to fetch employee')
         result = await response.json()
         
-        console.log('Employee search result:', result)
-        
         if (result.data && result.data.length > 0) {
-          console.log('Found employee:', result.data[0])
           return { data: result.data[0] }
         }
       }

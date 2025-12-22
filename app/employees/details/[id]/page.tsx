@@ -58,13 +58,6 @@ export default function EmployeeDetailView() {
     const loadDocumentUrls = async () => {
       if (!employee) return
 
-      console.log('Loading document URLs for employee:', employee.employeeCode)
-      console.log('Employee data:', {
-        passportPhoto: employee.passportPhoto,
-        aadharCard: employee.aadharCard,
-        panCard: employee.panCard,
-      })
-
       const supabase = createSupabaseClient()
       const documents = {
         passportPhoto: employee.passportPhoto,
@@ -80,7 +73,6 @@ export default function EmployeeDetailView() {
       for (const [key, filePath] of Object.entries(documents)) {
         if (filePath) {
           try {
-            console.log(`Attempting to load ${key} from path:`, filePath)
             const { data, error } = await supabase.storage
               .from('employee-documents')
               .createSignedUrl(filePath, 3600) // 1 hour expiry
@@ -93,15 +85,12 @@ export default function EmployeeDetailView() {
                 .getPublicUrl(filePath)
               
               if (publicUrlData?.publicUrl) {
-                console.log(`Using public URL for ${key}:`, publicUrlData.publicUrl)
                 urls[key] = publicUrlData.publicUrl
               }
             } else if (data?.signedUrl) {
-              console.log(`Signed URL for ${key}:`, data.signedUrl)
               urls[key] = data.signedUrl
             }
           } catch (error) {
-            console.error(`Error loading ${key}:`, error)
             // Try public URL as fallback
             try {
               const { data: publicUrlData } = supabase.storage

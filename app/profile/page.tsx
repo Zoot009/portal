@@ -70,7 +70,6 @@ export default function ProfilePage() {
   // Update state when data loads
   useEffect(() => {
     if (profileData) {
-      console.log('Loading profile data:', profileData)
       // Update documents
       const loadedDocs: any = {}
       Object.entries(profileData.documents || {}).forEach(([key, path]) => {
@@ -85,13 +84,11 @@ export default function ProfilePage() {
             url: path,
             uploadedAt: new Date()
           }
-          console.log(`Loaded ${key}:`, loadedDocs[key])
         } else {
           loadedDocs[key] = null
         }
       })
       setDocuments(loadedDocs)
-      console.log('Final documents state:', loadedDocs)
 
       // Update profile settings from database
       if (profileData.profileData) {

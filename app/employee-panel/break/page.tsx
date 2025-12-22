@@ -52,7 +52,6 @@ export default function BreakPage() {
     queryKey: ['active-break', employeeId],
     queryFn: async () => {
       if (!employeeId || isNaN(employeeId)) {
-        console.warn('Invalid employeeId for active break query:', employeeId)
         return null
       }
       const response = await fetch(`/api/breaks/active?employeeId=${employeeId}`, {
@@ -77,7 +76,6 @@ export default function BreakPage() {
     queryKey: ['break-history-today', employeeId],
     queryFn: async () => {
       if (!employeeId || isNaN(employeeId)) {
-        console.warn('Invalid employeeId for break history query:', employeeId)
         return null
       }
       const today = new Date().toISOString().split('T')[0]
@@ -184,8 +182,6 @@ export default function BreakPage() {
         throw new Error('Invalid employee ID. Please refresh the page and try again.')
       }
       
-      console.log('Starting break for employeeId:', employeeId, 'Type:', typeof employeeId)
-      
       const response = await fetch('/api/breaks/start', {
         method: 'POST',
         headers: { 
@@ -196,7 +192,6 @@ export default function BreakPage() {
       })
       if (!response.ok) {
         const error = await response.json()
-        console.error('Start break API error:', error)
         throw new Error(error.error || 'Failed to start break')
       }
       return response.json()
@@ -222,8 +217,6 @@ export default function BreakPage() {
         throw new Error('Invalid employee ID. Please refresh the page and try again.')
       }
       
-      console.log('Ending break for employeeId:', employeeId, 'Type:', typeof employeeId)
-      
       const response = await fetch('/api/breaks/end', {
         method: 'POST',
         headers: { 
@@ -234,7 +227,6 @@ export default function BreakPage() {
       })
       if (!response.ok) {
         const error = await response.json()
-        console.error('End break API error:', error)
         throw new Error(error.error || 'Failed to end break')
       }
       return response.json()
