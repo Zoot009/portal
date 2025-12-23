@@ -93,7 +93,6 @@ export default function WorkLogsPage() {
   const [viewMode, setViewMode] = useState<'all' | 'submitted' | 'not-submitted' | 'missing-mandatory'>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [filterType, setFilterType] = useState<'date' | 'cycle'>('date')
-  const [selectedCycle, setSelectedCycle] = useState('')
   const itemsPerPage = 10
   
   const queryClient = useQueryClient()
@@ -104,23 +103,82 @@ export default function WorkLogsPage() {
     const cycles = []
     const today = new Date()
     
-    // Generate last 6 months of cycles
+    console.log('=== SALARY CYCLE DEBUG ===')
+    console.log('Today:', today.toISOString().split('T')[0], '- Day:', today.getDate())
+    
+    // Determine current cycle base - which month's 6th are we in or past?
+    let currentCycleYear = today.getFullYear()
+    let currentCycleMonth = today.getMonth()
+    
+    // If we're before the 6th of this month, we're still in previous month's cycle
+    if (today.getDate() < 6) {
+      currentCycleMonth -= 1
+      if (currentCycleMonth < 0) {
+        currentCycleMonth = 11
+        currentCycleYear -= 1
+      }
+    }
+    
+    console.log('Current cycle base: Year =', currentCycleYear, 'Month =', currentCycleMonth)
+    
+    // Generate last 6 cycles starting from current cycle
     for (let i = 0; i < 6; i++) {
-      const cycleStartDate = new Date(today.getFullYear(), today.getMonth() - i, 6)
-      const cycleEndDate = new Date(today.getFullYear(), today.getMonth() - i + 1, 5)
+      // Calculate start date (6th of the cycle month)
+      let startYear = currentCycleYear
+      let startMonth = currentCycleMonth - i
+      
+      // Handle year boundaries for start
+      while (startMonth < 0) {
+        startMonth += 12
+        startYear -= 1
+      }
+      
+      // Calculate end date (5th of next month)
+      let endYear = startYear
+      let endMonth = startMonth + 1
+      
+      // Handle year boundaries for end
+      if (endMonth > 11) {
+        endMonth = 0
+        endYear += 1
+      }
+      
+      // Create dates as ISO strings to avoid timezone issues
+      const startDateStr = `${startYear}-${String(startMonth + 1).padStart(2, '0')}-06`
+      const endDateStr = `${endYear}-${String(endMonth + 1).padStart(2, '0')}-05`
+      
+      // Create Date objects from the ISO strings for display formatting
+      const cycleStartDate = new Date(startDateStr)
+      const cycleEndDate = new Date(endDateStr)
+      
+      console.log(`Cycle ${i}:`, {
+        startYear, startMonth: startMonth + 1, // +1 for human readable
+        endYear, endMonth: endMonth + 1, // +1 for human readable
+        startDateStr,
+        endDateStr,
+        label: `${cycleStartDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })} - ${cycleEndDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}`
+      })
       
       cycles.push({
-        value: `${cycleStartDate.toISOString().split('T')[0]}_${cycleEndDate.toISOString().split('T')[0]}`,
+        value: `${startDateStr}_${endDateStr}`,
         label: `${cycleStartDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })} - ${cycleEndDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}`,
-        startDate: cycleStartDate.toISOString().split('T')[0],
-        endDate: cycleEndDate.toISOString().split('T')[0]
+        startDate: startDateStr,
+        endDate: endDateStr
       })
     }
+    
+    console.log('Final generated cycles:', cycles)
+    console.log('=== END CYCLE DEBUG ===')
     
     return cycles
   }
 
   const salaryCycles = generateSalaryCycles()
+  
+  // Initialize selectedCycle with current cycle
+  const [selectedCycle, setSelectedCycle] = useState(() => {
+    return salaryCycles.length > 0 ? salaryCycles[0].value : ''
+  })
 
   // Fetch submission status for all employees
   const { data: submissionStatusResponse, isLoading: statusLoading } = useQuery({
@@ -134,7 +192,7 @@ export default function WorkLogsPage() {
       if (filterType === 'date') {
         url += `date=${dateFilter}`
       } else {
-        const cycle = salaryCycles.find(c => c.value === selectedCycle)
+        const cycle = salaryCycles.find((c: any) => c.value === selectedCycle)
         if (cycle) {
           url += `startDate=${cycle.startDate}&endDate=${cycle.endDate}`
         }
@@ -264,7 +322,7 @@ export default function WorkLogsPage() {
 
             {/* Date or Cycle Selector */}
             {filterType === 'date' ? (
-              <div className="w-[160px] space-y-1.5">
+              <div className="w-40 space-y-1.5">
                 <label className="text-xs font-medium text-muted-foreground">Date</label>
                 <Input
                   type="date"
@@ -308,7 +366,7 @@ export default function WorkLogsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Employees</SelectItem>
+                  <SelectItem value="all">All Tags</SelectItem>
                   <SelectItem value="submitted">Submitted Only</SelectItem>
                   <SelectItem value="not-submitted">Not Submitted Only</SelectItem>
                   <SelectItem value="missing-mandatory">Missing Mandatory Tags</SelectItem>
@@ -480,7 +538,18 @@ export default function WorkLogsPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            router.push(`/tags/logs/details?employeeId=${empStatus.employee.id}&date=${dateFilter}`)
+                            let url = `/tags/logs/details?employeeId=${empStatus.employee.id}`
+                            
+                            if (filterType === 'date') {
+                              url += `&date=${dateFilter}`
+                            } else if (filterType === 'cycle' && selectedCycle) {
+                              const cycle = salaryCycles.find(c => c.value === selectedCycle)
+                              if (cycle) {
+                                url += `&startDate=${cycle.startDate}&endDate=${cycle.endDate}&cycleLabel=${encodeURIComponent(cycle.label)}`
+                              }
+                            }
+                            
+                            router.push(url)
                           }}
                         >
                           View Details

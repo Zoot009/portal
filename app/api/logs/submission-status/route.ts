@@ -52,8 +52,8 @@ export async function GET(request: NextRequest) {
         },
       })
 
-      // Only consider it submitted if there are actual logs AND submission status exists
-      const isSubmitted = logs.length > 0 && !!submissionStatus && submissionStatus.isLocked
+      // Consider it submitted if there are logs OR submission status exists (consistent with bulk check)
+      const isSubmitted = logs.length > 0 || submissionStatus !== undefined
 
       // Clean up orphaned submission status (status exists but no logs)
       if (submissionStatus && logs.length === 0) {

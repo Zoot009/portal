@@ -2,6 +2,7 @@
 
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMemo, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -18,7 +19,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { useState } from 'react'
 
 interface EmployeeSubmissionStatus {
   employee: {
@@ -62,15 +62,22 @@ export default function WorkLogDetailsPage() {
   
   const employeeId = searchParams.get('employeeId')
   const date = searchParams.get('date')
+  const startDate = searchParams.get('startDate')
+  const endDate = searchParams.get('endDate')
+  const cycleLabel = searchParams.get('cycleLabel')
   
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
+  // Determine if we're using date or cycle filtering
+  const isDateRange = !!(startDate && endDate)
+  const dateParam = isDateRange ? `startDate=${startDate}&endDate=${endDate}` : `date=${date}`
+
   // Fetch submission status for the specific employee
   const { data: submissionStatusResponse, isLoading } = useQuery({
-    queryKey: ['employee-submission-status', employeeId, date],
+    queryKey: ['employee-submission-status', employeeId, date, startDate, endDate],
     queryFn: async () => {
-      if (!employeeId || !date) return null
-      const response = await fetch(`/api/logs/submission-status?date=${date}`)
+      if (!employeeId || (!date && !isDateRange)) return null
+      const response = await fetch(`/api/logs/submission-status?${dateParam}`)
       if (!response.ok) throw new Error('Failed to fetch submission status')
       const result = await response.json()
       
@@ -80,21 +87,98 @@ export default function WorkLogDetailsPage() {
       )
       return employee
     },
-    enabled: !!employeeId && !!date,
+    enabled: !!employeeId && (!!date || !!isDateRange),
   })
 
-  // Delete mutation
+  // Fetch detailed work logs
+  const { data: detailedLogsResponse, isLoading: logsLoading } = useQuery({
+    queryKey: ['detailed-work-logs', employeeId, date, startDate, endDate],
+    queryFn: async () => {
+      if (!employeeId || (!date && !isDateRange)) return null
+      const response = await fetch(`/api/logs?employeeId=${employeeId}&${dateParam}`)
+      if (!response.ok) throw new Error('Failed to fetch detailed work logs')
+      return response.json()
+    },
+    enabled: !!employeeId && (!!date || !!isDateRange),
+  })
+
+  // Generate complete date range with submission status
+  const generateCompleteWorkLog = () => {
+    if (!isDateRange || !startDate || !endDate || !detailedLogsResponse?.data) {
+      return detailedLogsResponse?.data || []
+    }
+
+    // Generate all dates in range, but only up to today
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    const today = new Date()
+    const actualEnd = end > today ? today : end
+    
+    const allDates = []
+    const current = new Date(start)
+
+    while (current <= actualEnd) {
+      allDates.push(new Date(current))
+      current.setDate(current.getDate() + 1)
+    }
+
+    // Map existing logs by date
+    const logsByDate = new Map()
+    detailedLogsResponse.data.forEach((log: any) => {
+      const logDate = new Date(log.logDate).toISOString().split('T')[0]
+      if (!logsByDate.has(logDate)) {
+        logsByDate.set(logDate, [])
+      }
+      logsByDate.get(logDate).push(log)
+    })
+
+    // Create complete log entries with placeholders for missing dates
+    const completeWorkLog = []
+    allDates.forEach(date => {
+      const dateStr = date.toISOString().split('T')[0]
+      const logsForDate = logsByDate.get(dateStr)
+      
+      if (logsForDate && logsForDate.length > 0) {
+        // Add all logs for this date
+        completeWorkLog.push(...logsForDate)
+      } else {
+        // Add placeholder for non-submitted day
+        completeWorkLog.push({
+          id: `placeholder-${dateStr}`,
+          logDate: date.toISOString(),
+          count: 0,
+          totalMinutes: 0,
+          submittedAt: null,
+          isSubmitted: false,
+          isPlaceholder: true,
+          tag: { tagName: 'No Submission' },
+          employee: submissionStatusResponse?.employee
+        })
+      }
+    })
+
+    return completeWorkLog.sort((a, b) => new Date(b.logDate).getTime() - new Date(a.logDate).getTime())
+  }
+
+  // Employee data from the submission status response
+  const employeeData: EmployeeSubmissionStatus | null = submissionStatusResponse
+
+  // Generate complete work logs after employeeData is available
+  const completeWorkLogs = useMemo(() => generateCompleteWorkLog(), [
+    isDateRange, startDate, endDate, detailedLogsResponse?.data, submissionStatusResponse?.employee
+  ])
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      if (!employeeId || !date) throw new Error('Missing employee ID or date')
+      if (!employeeId || (!date && !isDateRange)) throw new Error('Missing employee ID or date parameters')
+      
+      const body = isDateRange 
+        ? { employeeId: parseInt(employeeId), startDate, endDate }
+        : { employeeId: parseInt(employeeId), date }
       
       const response = await fetch('/api/logs/delete', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          employeeId: parseInt(employeeId),
-          date: date,
-        }),
+        body: JSON.stringify(body),
       })
       
       if (!response.ok) {
@@ -111,7 +195,7 @@ export default function WorkLogDetailsPage() {
       queryClient.invalidateQueries({ queryKey: ['employee-submission-status'] })
       queryClient.invalidateQueries({ queryKey: ['submission-status'] })
       queryClient.invalidateQueries({ queryKey: ['work-logs'] })
-      queryClient.removeQueries({ queryKey: ['employee-submission-status', employeeId, date] })
+      queryClient.removeQueries({ queryKey: ['employee-submission-status', employeeId, date, startDate, endDate] })
       queryClient.clear() // Clear entire cache
       
       // Redirect after a short delay to ensure cache is cleared
@@ -130,8 +214,6 @@ export default function WorkLogDetailsPage() {
     deleteMutation.mutate()
     setDeleteDialogOpen(false)
   }
-
-  const employeeData: EmployeeSubmissionStatus | null = submissionStatusResponse
 
   // Calculate missing tags
   const submittedTagNames = new Set(employeeData?.logs.map(log => log.tagName) || [])
@@ -180,14 +262,16 @@ export default function WorkLogDetailsPage() {
     )
   }
 
-  const formattedDate = date 
-    ? new Date(date).toLocaleDateString('en-US', { 
-        weekday: 'long',
-        month: 'long', 
-        day: 'numeric', 
-        year: 'numeric' 
-      })
-    : 'Unknown Date'
+  const displayDate = isDateRange && cycleLabel 
+    ? decodeURIComponent(cycleLabel)
+    : date 
+      ? new Date(date).toLocaleDateString('en-US', { 
+          weekday: 'long',
+          month: 'long', 
+          day: 'numeric', 
+          year: 'numeric' 
+        })
+      : 'Unknown Date'
 
   return (
     <div className="space-y-6">
@@ -204,7 +288,7 @@ export default function WorkLogDetailsPage() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Work Log Details</h1>
             <p className="text-muted-foreground mt-1">
-              Detailed work log submission for {formattedDate}
+              Detailed work log submission for {displayDate}
             </p>
           </div>
         </div>
@@ -368,11 +452,184 @@ export default function WorkLogDetailsPage() {
             Work Log Entries
           </CardTitle>
           <CardDescription>
-            Detailed breakdown of all tasks completed on {formattedDate}
+            Detailed breakdown of all tasks completed on {displayDate}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {employeeData.logs.length > 0 ? (
+          {logsLoading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              <p className="text-sm text-muted-foreground mt-2">Loading detailed work logs...</p>
+            </div>
+          ) : completeWorkLogs?.length > 0 ? (
+            <div className="relative overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="text-xs uppercase bg-muted/50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 font-medium text-muted-foreground">
+                      Tag Name
+                    </th>
+                    <th scope="col" className="px-6 py-3 font-medium text-muted-foreground text-center">
+                      Date
+                    </th>
+                    <th scope="col" className="px-6 py-3 font-medium text-muted-foreground text-center">
+                      Count
+                    </th>
+                    <th scope="col" className="px-6 py-3 font-medium text-muted-foreground text-center">
+                      Duration
+                    </th>
+                    <th scope="col" className="px-6 py-3 font-medium text-muted-foreground text-center">
+                      Total Minutes
+                    </th>
+                    <th scope="col" className="px-6 py-3 font-medium text-muted-foreground text-center">
+                      Status
+                    </th>
+                    <th scope="col" className="px-6 py-3 font-medium text-muted-foreground text-center">
+                      Source
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {completeWorkLogs.map((log: any, index: number) => (
+                    <tr 
+                      key={log.id || `${log.logDate}-${index}`} 
+                      className={`border-b transition-colors ${
+                        log.isPlaceholder 
+                          ? 'bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/30' 
+                          : 'bg-card hover:bg-muted/30'
+                      }`}
+                    >
+                      <td className="px-6 py-4 font-medium">
+                        <div className="flex items-center gap-2">
+                          <div className={`h-2 w-2 rounded-full ${
+                            log.isPlaceholder ? 'bg-red-500' : 'bg-blue-500'
+                          }`}></div>
+                          <span className={log.isPlaceholder ? 'text-red-600 dark:text-red-400' : 'text-foreground'}>
+                            {log.tag?.tagName || 'N/A'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className={`font-medium ${
+                          log.isPlaceholder ? 'text-red-600 dark:text-red-400' : 'text-foreground'
+                        }`}>
+                          {new Date(log.logDate).toLocaleDateString('en-US', {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        {log.isPlaceholder ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded-md bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-semibold text-sm">
+                            0
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-1 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-semibold text-sm">
+                            {log.count}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        {log.isPlaceholder ? (
+                          <span className="inline-block px-3 py-1 rounded-md bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-medium text-sm">
+                            0h 0m
+                          </span>
+                        ) : (
+                          <span className="inline-block px-3 py-1 rounded-md bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium text-sm">
+                            {Math.floor(log.totalMinutes / 60)}h {log.totalMinutes % 60}m
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className={`inline-flex flex-col items-center justify-center min-w-[80px] px-3 py-2 rounded-lg border ${
+                          log.isPlaceholder 
+                            ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800' 
+                            : 'bg-muted border-border'
+                        }`}>
+                          <span className={`text-lg font-bold ${
+                            log.isPlaceholder ? 'text-red-600 dark:text-red-400' : 'text-foreground'
+                          }`}>
+                            {log.totalMinutes}
+                          </span>
+                          <span className={`text-[10px] uppercase ${
+                            log.isPlaceholder ? 'text-red-500 dark:text-red-500' : 'text-muted-foreground'
+                          }`}>
+                            min
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        {log.isPlaceholder ? (
+                          <Badge variant="destructive" className="text-xs">
+                            Not Submitted
+                          </Badge>
+                        ) : (
+                          <div className="flex flex-col items-center gap-1">
+                            <Badge variant="default" className="text-xs mb-1">
+                              Submitted
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(log.submittedAt).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric'
+                              })}<br/>
+                              {new Date(log.submittedAt).toLocaleTimeString('en-US', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        {log.isPlaceholder ? (
+                          <Badge variant="outline" className="text-xs text-muted-foreground">
+                            -
+                          </Badge>
+                        ) : (
+                          <Badge variant={log.isManual ? "destructive" : "default"} className="text-xs">
+                            {log.isManual ? 'Manual' : log.source || 'Auto'}
+                          </Badge>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              
+              {/* Summary Row */}
+              <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div className="flex flex-col items-center">
+                    <span className="font-medium text-muted-foreground">Total Days</span>
+                    <span className="text-lg font-bold">{completeWorkLogs.length}</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <span className="font-medium text-green-600">Submitted</span>
+                    <span className="text-lg font-bold text-green-600">
+                      {completeWorkLogs.filter(log => !log.isPlaceholder).length}
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <span className="font-medium text-red-600">Not Submitted</span>
+                    <span className="text-lg font-bold text-red-600">
+                      {completeWorkLogs.filter(log => log.isPlaceholder).length}
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <span className="font-medium text-muted-foreground">Total Time</span>
+                    <span className="text-lg font-bold">
+                      {Math.floor(completeWorkLogs.reduce((sum: number, log: any) => sum + (log.totalMinutes || 0), 0) / 60)}h{' '}
+                      {completeWorkLogs.reduce((sum: number, log: any) => sum + (log.totalMinutes || 0), 0) % 60}m
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : employeeData.logs.length > 0 ? (
             <div className="relative overflow-x-auto">
               <table className="w-full text-sm text-left">
                 <thead className="text-xs uppercase bg-muted/50">
@@ -428,7 +685,7 @@ export default function WorkLogDetailsPage() {
           ) : (
             <div className="text-center py-12 text-muted-foreground">
               <p className="text-lg font-medium">No work log entries found</p>
-              <p className="text-sm mt-2">This employee hasn't submitted any work logs for this date</p>
+              <p className="text-sm mt-2">This employee hasn't submitted any work logs for this period</p>
             </div>
           )}
         </CardContent>
@@ -448,7 +705,7 @@ export default function WorkLogDetailsPage() {
               )}
             </CardTitle>
             <CardDescription className="text-red-600 dark:text-red-400">
-              The following assigned tags were not submitted on {formattedDate}
+              The following assigned tags were not submitted on {displayDate}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -535,7 +792,7 @@ export default function WorkLogDetailsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure you want to delete this submission?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete all work logs submitted by <strong>{employeeData?.employee.name}</strong> for <strong>{formattedDate}</strong>.
+              This will permanently delete all work logs submitted by <strong>{employeeData?.employee.name}</strong> for <strong>{displayDate}</strong>.
               <br /><br />
               This action cannot be undone. The employee will be able to submit new data for this date.
             </AlertDialogDescription>

@@ -26,9 +26,14 @@ export async function GET(request: NextRequest) {
     }
 
     if (startDate && endDate) {
+      const startDateTime = new Date(startDate)
+      const endDateTime = new Date(endDate)
+      // Set end time to end of day to include the entire end date
+      endDateTime.setHours(23, 59, 59, 999)
+      
       where.logDate = {
-        gte: new Date(startDate),
-        lte: new Date(endDate),
+        gte: startDateTime,
+        lte: endDateTime,
       }
     }
 
