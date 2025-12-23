@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { RoleGuard } from '@/components/role-guard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -173,7 +174,8 @@ export default function TagsPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <RoleGuard allowedRoles={['ADMIN', 'TEAMLEADER']}>
+      <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -407,6 +409,7 @@ export default function TagsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+    </RoleGuard>
   )
 }

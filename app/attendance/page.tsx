@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { RoleGuard } from '@/components/role-guard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -549,7 +550,8 @@ export default function AttendanceRecordsPage() {
 
 
   return (
-    <div className="p-6">
+    <RoleGuard allowedRoles={['ADMIN', 'TEAMLEADER']}>
+      <div className="p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -1439,6 +1441,7 @@ export default function AttendanceRecordsPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </RoleGuard>
   )
 }

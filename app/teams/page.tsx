@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { RoleGuard } from '@/components/role-guard'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -207,7 +208,8 @@ export default function TeamsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <RoleGuard allowedRoles={['ADMIN', 'TEAMLEADER']}>
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Teams</h2>
@@ -534,6 +536,7 @@ export default function TeamsPage() {
           </CardContent>
         </Card>
       )}
-    </div>
+      </div>
+    </RoleGuard>
   )
 }
