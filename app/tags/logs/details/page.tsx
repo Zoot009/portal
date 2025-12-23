@@ -133,7 +133,7 @@ export default function WorkLogDetailsPage() {
     })
 
     // Create complete log entries with placeholders for missing dates
-    const completeWorkLog = []
+    const completeWorkLog: any[] = []
     allDates.forEach(date => {
       const dateStr = date.toISOString().split('T')[0]
       const logsForDate = logsByDate.get(dateStr)
@@ -610,13 +610,13 @@ export default function WorkLogDetailsPage() {
                   <div className="flex flex-col items-center">
                     <span className="font-medium text-green-600">Submitted</span>
                     <span className="text-lg font-bold text-green-600">
-                      {completeWorkLogs.filter(log => !log.isPlaceholder).length}
+                      {completeWorkLogs.filter((log: any) => !log.isPlaceholder).length}
                     </span>
                   </div>
                   <div className="flex flex-col items-center">
                     <span className="font-medium text-red-600">Not Submitted</span>
                     <span className="text-lg font-bold text-red-600">
-                      {completeWorkLogs.filter(log => log.isPlaceholder).length}
+                      {completeWorkLogs.filter((log: any) => log.isPlaceholder).length}
                     </span>
                   </div>
                   <div className="flex flex-col items-center">
