@@ -223,142 +223,70 @@ export default function WorkLogDetailsPage() {
         )}
       </div>
 
-      {/* Employee Information Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Employee Information
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground flex items-center gap-2">
-                <User className="h-4 w-4" />
-                Full Name
-              </p>
-              <p className="text-lg font-semibold">{employeeData.employee.name}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground flex items-center gap-2">
-                <Badge variant="outline" className="w-fit">
-                  Code
-                </Badge>
-              </p>
-              <p className="text-lg font-semibold font-mono">{employeeData.employee.employeeCode}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground flex items-center gap-2">
-                <Building2 className="h-4 w-4" />
-                Department
-              </p>
-              <p className="text-lg font-semibold">{employeeData.employee.department || 'N/A'}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground flex items-center gap-2">
-                <Briefcase className="h-4 w-4" />
-                Designation
-              </p>
-              <p className="text-lg font-semibold">{employeeData.employee.designation || 'N/A'}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Summary Statistics */}
-      <div className="grid gap-4 md:grid-cols-4">
+      {/* Employee Information */}
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Submission Status</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Full Name
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            {employeeData.hasSubmitted ? (
-              <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800">
-                ✓ Submitted
+            <div className="text-2xl font-bold">{employeeData.employee.name}</div>
+            <p className="text-xs text-muted-foreground">Employee name</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Badge variant="outline" className="w-fit">
+                Code
               </Badge>
-            ) : (
-              <Badge variant="destructive">
-                ✗ Not Submitted
-              </Badge>
-            )}
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Tags</CardTitle>
-            <Tag className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-              {employeeData.totalTags}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Different work categories
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Hours</CardTitle>
-            <Clock className="h-4 w-4 text-green-600 dark:text-green-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-green-600 dark:text-green-400">
-              {Math.floor(employeeData.totalMinutes / 60)}h {employeeData.totalMinutes % 60}m
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Time logged today
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Minutes</CardTitle>
-            <Clock className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
-              {employeeData.totalMinutes}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Raw time value
-            </p>
+            <div className="text-2xl font-bold font-mono">{employeeData.employee.employeeCode}</div>
+            <p className="text-xs text-muted-foreground">Employee code</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Submission Timestamp */}
-      {employeeData.submittedAt && (
-        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                <Calendar className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Submitted At</p>
-                <p className="text-lg font-semibold">
-                  {new Date(employeeData.submittedAt).toLocaleString('en-US', {
-                    weekday: 'long',
-                    month: 'long',
-                    day: 'numeric',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    hour12: true
-                  })}
-                </p>
-              </div>
-            </div>
+      {/* Summary Statistics */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium">Total Days</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">1</div>
+            <p className="text-xs text-muted-foreground">Logs submitted</p>
           </CardContent>
         </Card>
-      )}
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium">Avg Tags/Day</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{employeeData.totalTags}.0</div>
+            <p className="text-xs text-muted-foreground">Tasks logged</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium">Avg Hours/Day</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {(employeeData.totalMinutes / 60).toFixed(1)}h
+            </div>
+            <p className="text-xs text-muted-foreground">Work logged</p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Work Log Entries */}
       <Card>
@@ -373,57 +301,72 @@ export default function WorkLogDetailsPage() {
         </CardHeader>
         <CardContent>
           {employeeData.logs.length > 0 ? (
-            <div className="relative overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="text-xs uppercase bg-muted/50">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 font-medium text-muted-foreground">
-                      Tag Name
-                    </th>
-                    <th scope="col" className="px-6 py-3 font-medium text-muted-foreground text-center">
-                      Count
-                    </th>
-                    <th scope="col" className="px-6 py-3 font-medium text-muted-foreground text-center">
-                      Duration
-                    </th>
-                    <th scope="col" className="px-6 py-3 font-medium text-muted-foreground text-center">
-                      Total Minutes
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {employeeData.logs.map((log, index) => (
-                    <tr 
-                      key={log.id} 
-                      className="bg-card border-b hover:bg-muted/30 transition-colors"
-                    >
-                      <td className="px-6 py-4 font-medium text-foreground">
-                        {log.tagName}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className="font-semibold text-foreground">
-                          {log.count}
+            <div className="space-y-3">
+              <div className="border rounded-lg overflow-hidden hover:shadow-md transition-all">
+                {/* Header */}
+                <div className="flex items-start justify-between p-4 bg-card">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <Calendar className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">
+                        {formattedDate}
+                      </h4>
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5">
+                        <span className="flex items-center gap-1">
+                          <Tag className="h-3 w-3" />
+                          {employeeData.totalTags} {employeeData.totalTags === 1 ? 'task' : 'tasks'}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className="inline-block px-3 py-1 rounded-md bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium text-sm">
-                          {Math.floor(log.totalMinutes / 60)}h {log.totalMinutes % 60}m
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {Math.floor(employeeData.totalMinutes / 60)}h {employeeData.totalMinutes % 60}m
                         </span>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className="inline-flex flex-col items-center justify-center min-w-[80px] px-4 py-2 rounded-lg bg-muted border">
-                          <span className="text-xl font-bold text-foreground">
-                            {log.totalMinutes}
+                        {employeeData.submittedAt && (
+                          <span className="flex items-center gap-1">
+                            <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            {new Date(employeeData.submittedAt).toLocaleTimeString('en-US', { 
+                              hour: '2-digit', 
+                              minute: '2-digit',
+                              hour12: true 
+                            })}
                           </span>
-                          <span className="text-[10px] text-muted-foreground uppercase">
-                            minutes
-                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Task Details */}
+                <div className="p-4 pt-0 bg-muted/20">
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {employeeData.logs.map((log, index) => (
+                      <div key={log.id} className="flex items-start gap-2 p-3 rounded-md bg-card border">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                          <Tag className="h-4 w-4 text-primary" />
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{log.tagName}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs text-muted-foreground">
+                              Count: <span className="font-medium text-foreground">{log.count}</span>
+                            </span>
+                            <span className="text-xs text-muted-foreground">•</span>
+                            <span className="text-xs text-muted-foreground">
+                              Time: <span className="font-medium text-foreground">{log.totalMinutes}m</span>
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {Math.floor(log.totalMinutes / log.count)}m per task
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="text-center py-12 text-muted-foreground">

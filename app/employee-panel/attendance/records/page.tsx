@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Switch } from "@/components/ui/switch"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CalendarIcon, Clock, Search, UserCheck, UserX, Calendar, TrendingUp, Edit, ChevronDown, ChevronUp, Loader2, CalendarCheck, Info } from "lucide-react"
 import React, { useState, useEffect } from "react"
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSunday, eachDayOfInterval } from "date-fns"
@@ -48,7 +49,7 @@ export default function MyAttendanceRecordsPage() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [dateFilter, setDateFilter] = useState("all")
   const [currentCycle, setCurrentCycle] = useState("")
-  const [cycleFilter, setCycleFilter] = useState("all") // Changed from "current" to "all"
+  const [cycleFilter, setCycleFilter] = useState("current")
   const [availableCycles, setAvailableCycles] = useState<Array<{value: string, label: string, startDate: Date, endDate: Date}>>([])
   const [expandedRecordId, setExpandedRecordId] = useState<string | null>(null)
   const [employeeInfo, setEmployeeInfo] = useState<{standardHours: number, dailyHours: number} | null>(null)
@@ -719,7 +720,7 @@ export default function MyAttendanceRecordsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4 bg-white dark:bg-zinc-900 p-4 rounded-lg border dark:border">
+      <div className="flex flex-col md:flex-row gap-4 p-4 rounded-lg border dark:border">
         <Select value={cycleFilter} onValueChange={setCycleFilter}>
           <SelectTrigger className="w-[280px]">
             <SelectValue placeholder="Select Cycle" />
@@ -733,7 +734,7 @@ export default function MyAttendanceRecordsPage() {
           </SelectContent>
         </Select>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 ">
           <Button
             variant={dateFilter === "all" ? "default" : "outline"}
             onClick={() => setDateFilter("all")}
@@ -765,7 +766,7 @@ export default function MyAttendanceRecordsPage() {
         </div>
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-40">
             <SelectValue placeholder="All Status" />
           </SelectTrigger>
           <SelectContent>
@@ -832,7 +833,7 @@ export default function MyAttendanceRecordsPage() {
             <Table>
               <TableHeader>
                 <TableRow className="border-b">
-                  <TableHead className="text-left font-medium w-[40px]"></TableHead>
+                  <TableHead className="text-left font-medium w-10"></TableHead>
                   <TableHead className="text-left font-medium">Date</TableHead>
                   <TableHead className="text-left font-medium">Day</TableHead>
                   <TableHead className="text-left font-medium">Status</TableHead>
@@ -849,7 +850,7 @@ export default function MyAttendanceRecordsPage() {
                 {filteredRecords.map((record) => (
                   <React.Fragment key={record.id}>
                     <TableRow 
-                      className={`hover:bg-gray-50/50 transition-colors ${record.hasBeenEdited ? 'cursor-pointer' : ''}`}
+                      className={`hover:bg-gray transition-colors ${record.hasBeenEdited ? 'cursor-pointer' : ''}`}
                       onClick={() => record.hasBeenEdited && setExpandedRecordId(expandedRecordId === record.id ? null : record.id)}
                     >
                       <TableCell className="text-center">
@@ -859,7 +860,7 @@ export default function MyAttendanceRecordsPage() {
                             <ChevronDown className="h-4 w-4 text-gray-500" />
                         )}
                       </TableCell>
-                      <TableCell className="font-medium text-gray-900 dark:text-gray-100">
+                      <TableCell className="font-medium text-gray-500 dark:text-gray-700">
                         <div className="flex items-center gap-2">
                           {record.date}
                           {record.hasBeenEdited && (

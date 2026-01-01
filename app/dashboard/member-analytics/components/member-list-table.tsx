@@ -40,9 +40,15 @@ function ExpandedMemberDetails({ member }: ExpandedMemberProps) {
             <p className="text-sm text-muted-foreground">{member.member.email}</p>
             <p className="text-sm text-muted-foreground">ID: {member.member.employeeId}</p>
           </div>
-          <div className="text-right">
-            <div className="text-2xl font-bold">{member.totalTasks}</div>
-            <div className="text-sm text-muted-foreground">Total Tasks</div>
+          <div className="flex gap-6 text-right">
+            <div>
+              <div className="text-2xl font-bold">{member.totalTasks}</div>
+              <div className="text-sm text-muted-foreground">Completed</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-orange-600">{member.assignedTasksCount || 0}</div>
+              <div className="text-sm text-muted-foreground">Assigned</div>
+            </div>
           </div>
         </div>
       </div>
@@ -295,7 +301,11 @@ export function MemberListTable({
                       </div>
                       <div className="text-center">
                         <div className="font-bold text-lg">{member.totalTasks}</div>
-                        <div className="text-muted-foreground">Total</div>
+                        <div className="text-muted-foreground">Completed</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="font-bold text-lg text-green-600">{member.assignedTasksCount || 0}</div>
+                        <div className="text-muted-foreground">Assigned</div>
                       </div>
                     </div>
                   </div>

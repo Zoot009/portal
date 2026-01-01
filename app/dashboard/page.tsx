@@ -209,25 +209,25 @@ export default function DashboardPage() {
           <CardContent className="space-y-4">
             {stats?.work?.recentLogs?.length > 0 ? (
               stats.work.recentLogs.slice(0, 5).map((log: any) => (
-                <div key={log.id} className="flex items-center space-x-4">
+                <div key={log.id} className="flex items-center space-x-4 p-3 rounded-lg hover:bg-muted/50 transition-colors">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 truncate dark:text-gray-100">
-                      {log.employee?.name || 'Employee'} worked on {log.tag?.tagName || log.tag?.name || 'General Work'}
+                    <p className="text-sm font-semibold text-foreground">
+                      <span className="text-primary">{log.employee?.name || 'Employee'}</span> worked on <span className="text-foreground">{log.tag?.tagName || log.tag?.name || 'General Work'}</span>
                     </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline" className="text-xs">
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge variant="outline" className="text-xs font-medium">
                         {Math.floor((log.totalMinutes || 0) / 60)}h {(log.totalMinutes || 0) % 60}m
                       </Badge>
-                      <Badge variant="secondary" className="text-xs">
+                      <Badge variant="secondary" className="text-xs font-medium">
                         {log.count || 0} tasks
                       </Badge>
                       {log.tag?.category && (
-                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-600">
+                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400 font-medium">
                           {log.tag.category}
                         </Badge>
                       )}
                     </div>
-                    <p className="text-sm text-gray-500 truncate">
+                    <p className="text-xs text-muted-foreground mt-1">
                       {new Date(log.submittedAt).toLocaleDateString()} at {new Date(log.submittedAt).toLocaleTimeString()}
                     </p>
                   </div>

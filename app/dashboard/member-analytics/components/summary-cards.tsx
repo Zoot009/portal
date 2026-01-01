@@ -12,8 +12,8 @@ interface SummaryCardsProps {
 export function SummaryCards({ data, isLoading }: SummaryCardsProps) {
   if (isLoading) {
     return (
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, i) => (
           <Card key={i}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -33,7 +33,7 @@ export function SummaryCards({ data, isLoading }: SummaryCardsProps) {
   const summary = data?.summary
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Members</CardTitle>
@@ -77,6 +77,16 @@ export function SummaryCards({ data, isLoading }: SummaryCardsProps) {
             {summary?.totalTasks ? 
               Math.round((summary.totalAskingTasks / summary.totalTasks) * 100) : 0}% of total
           </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Assigned Tasks</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{summary?.totalAssignedTasks || 0}</div>
+          <p className="text-xs text-muted-foreground">Currently in progress</p>
         </CardContent>
       </Card>
     </div>

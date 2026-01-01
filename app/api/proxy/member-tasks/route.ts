@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
     
     // Try the external API first
     let useExternalAPI = true
+    let assignedTasksData: any = null
     
     const response = await fetch(externalUrl, {
       method: 'GET',
@@ -25,6 +26,31 @@ export async function GET(request: NextRequest) {
     
     const responseText = await response.text()
     console.log('Response body (first 200 chars):', responseText.substring(0, 200))
+    
+    // Fetch assigned tasks separately
+    try {
+      const assignedUrl = `https://pms.zootcloud.com/api/public/assigned-tasks`
+      console.log('Fetching assigned tasks from:', assignedUrl)
+      
+      const assignedResponse = await fetch(assignedUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Portal-Dashboard/1.0',
+        },
+        signal: AbortSignal.timeout(5000), // 5 second timeout
+      })
+      
+      if (assignedResponse.ok) {
+        const assignedText = await assignedResponse.text()
+        if (!assignedText.trim().startsWith('<!DOCTYPE') && !assignedText.trim().startsWith('<html')) {
+          assignedTasksData = JSON.parse(assignedText)
+          console.log('Successfully fetched assigned tasks')
+        }
+      }
+    } catch (assignedError) {
+      console.log('Failed to fetch assigned tasks, will calculate from response:', assignedError)
+    }
     
     if (!response.ok) {
       console.error('External API Error:', response.status, responseText)
@@ -54,190 +80,69 @@ export async function GET(request: NextRequest) {
         if (!data.success || !Array.isArray(data.data)) {
           console.error('Invalid API response structure:', data)
           useExternalAPI = false
+        } else {
+          console.log('Processing API data. Sample member:', JSON.stringify(data.data[0], null, 2))
+          
+          // Process the external API data to add assignedTasksCount
+          let totalAssignedTasks = 0
+          
+          data.data = data.data.map((memberData: any) => {
+            let assignedTasksCount = 0
+            
+            // Check if API already provides assignedTasksCount
+            if (typeof memberData.assignedTasksCount === 'number') {
+              assignedTasksCount = memberData.assignedTasksCount
+              console.log(`Member ${memberData.member?.displayName}: using API assignedTasksCount = ${assignedTasksCount}`)
+            } 
+            // Try to use the assigned tasks data from separate endpoint
+            else if (assignedTasksData?.success && Array.isArray(assignedTasksData.data)) {
+              const memberAssigned = assignedTasksData.data.find(
+                (m: any) => m.memberId === memberData.member.id || m.member?.id === memberData.member.id
+              )
+              if (memberAssigned) {
+                assignedTasksCount = memberAssigned.assignedTasksCount || 
+                                    (memberAssigned.assignedTasks?.length || 0)
+                console.log(`Member ${memberData.member?.displayName}: using separate endpoint assignedTasksCount = ${assignedTasksCount}`)
+              }
+            }
+            
+            // Fallback: count non-completed tasks from the main response
+            if (assignedTasksCount === 0) {
+              const assignedServiceTasks = memberData.serviceTasks?.filter(
+                (task: any) => !task.completedAt || task.completedAt === null
+              ).length || 0
+              
+              const assignedAskingTasks = memberData.askingTasks?.filter(
+                (task: any) => !task.completedAt || task.completedAt === null
+              ).length || 0
+              
+              assignedTasksCount = assignedServiceTasks + assignedAskingTasks
+              
+              if (assignedTasksCount === 0) {
+                console.log(`Member ${memberData.member?.displayName}: no assigned tasks found (all ${memberData.serviceTasks?.length || 0} service + ${memberData.askingTasks?.length || 0} asking tasks are completed)`)
+              } else {
+                console.log(`Member ${memberData.member?.displayName}: calculated assignedTasksCount = ${assignedTasksCount}`)
+              }
+            }
+            
+            totalAssignedTasks += assignedTasksCount
+            
+            return {
+              ...memberData,
+              assignedTasksCount
+            }
+          })
+          
+          console.log(`Total assigned tasks across all members: ${totalAssignedTasks}`)
+          
+          // Add totalAssignedTasks to summary
+          if (data.summary) {
+            data.summary.totalAssignedTasks = totalAssignedTasks
+          }
         }
       } catch (parseError) {
         console.error('JSON Parse Error:', parseError)
         useExternalAPI = false
-      }
-    }
-    
-    // If external API failed or returned HTML, use mock data
-    if (!useExternalAPI) {
-      console.log('Using mock data for member tasks')
-      
-      // Generate mock data based on the API documentation structure
-      data = {
-        success: true,
-        summary: {
-          totalMembers: 12,
-          totalServiceTasks: 156,
-          totalAskingTasks: 89,
-          totalTasks: 245,
-          dateRange: {
-            specificDate: searchParams.get('date'),
-            startDate: searchParams.get('startDate'),
-            endDate: searchParams.get('endDate'),
-            tillDate: searchParams.get('tillDate') || new Date().toISOString().split('T')[0]
-          }
-        },
-        data: [
-          {
-            member: {
-              id: "user001",
-              displayName: "John Doe",
-              email: "john.doe@company.com",
-              employeeId: "EMP001"
-            },
-            serviceTasks: [
-              {
-                id: "task001",
-                title: "Complete project documentation",
-                orderId: "order001",
-                orderNumber: "ORD-2025-001",
-                customerName: "Tech Corp",
-                serviceName: "Documentation Service",
-                serviceType: "SERVICE_TASK",
-                teamName: "Development Team",
-                completedAt: "2025-12-03T09:30:00Z",
-                deadline: "2025-12-03T18:00:00Z"
-              },
-              {
-                id: "task002",
-                title: "Code review and testing",
-                orderId: "order002",
-                orderNumber: "ORD-2025-002",
-                customerName: "Innovation Ltd",
-                serviceName: "Quality Assurance",
-                serviceType: "SERVICE_TASK",
-                teamName: "QA Team",
-                completedAt: "2025-12-03T11:15:00Z",
-                deadline: "2025-12-03T16:00:00Z"
-              }
-            ],
-            askingTasks: [
-              {
-                id: "asking001",
-                title: "Verify requirements with client",
-                orderId: "order001",
-                orderNumber: "ORD-2025-001",
-                customerName: "Tech Corp",
-                serviceName: "Requirements Analysis",
-                serviceType: "ASKING_SERVICE",
-                teamName: "Business Analysis Team",
-                currentStage: "VERIFIED",
-                completedAt: "2025-12-03T08:45:00Z",
-                completedBy: "user001",
-                completedByName: "John Doe",
-                deadline: "2025-12-03T12:00:00Z"
-              }
-            ],
-            totalTasks: 28
-          },
-          {
-            member: {
-              id: "user002",
-              displayName: "Jane Smith",
-              email: "jane.smith@company.com",
-              employeeId: "EMP002"
-            },
-            serviceTasks: [
-              {
-                id: "task003",
-                title: "UI/UX Design Implementation",
-                orderId: "order003",
-                orderNumber: "ORD-2025-003",
-                customerName: "Design Studio",
-                serviceName: "Design Service",
-                serviceType: "SERVICE_TASK",
-                teamName: "Design Team",
-                completedAt: "2025-12-02T14:20:00Z",
-                deadline: "2025-12-02T17:00:00Z"
-              }
-            ],
-            askingTasks: [
-              {
-                id: "asking002",
-                title: "Client approval for design mockup",
-                orderId: "order003",
-                orderNumber: "ORD-2025-003",
-                customerName: "Design Studio",
-                serviceName: "Design Review",
-                serviceType: "ASKING_SERVICE",
-                teamName: "Design Team",
-                currentStage: "INFORMED_TEAM",
-                completedAt: "2025-12-02T16:30:00Z",
-                completedBy: "user002",
-                completedByName: "Jane Smith",
-                deadline: "2025-12-02T18:00:00Z"
-              }
-            ],
-            totalTasks: 25
-          },
-          {
-            member: {
-              id: "user003",
-              displayName: "Mike Johnson",
-              email: "mike.johnson@company.com",
-              employeeId: "EMP003"
-            },
-            serviceTasks: [
-              {
-                id: "task004",
-                title: "Database optimization",
-                orderId: "order004",
-                orderNumber: "ORD-2025-004",
-                customerName: "Data Systems Inc",
-                serviceName: "Database Management",
-                serviceType: "SERVICE_TASK",
-                teamName: "Backend Team",
-                completedAt: "2025-12-01T13:45:00Z",
-                deadline: "2025-12-01T17:00:00Z"
-              }
-            ],
-            askingTasks: [],
-            totalTasks: 22
-          },
-          {
-            member: {
-              id: "user004",
-              displayName: "Sarah Wilson",
-              email: "sarah.wilson@company.com",
-              employeeId: "EMP004"
-            },
-            serviceTasks: [
-              {
-                id: "task005",
-                title: "API integration testing",
-                orderId: "order005",
-                orderNumber: "ORD-2025-005",
-                customerName: "API Solutions",
-                serviceName: "Integration Testing",
-                serviceType: "SERVICE_TASK",
-                teamName: "QA Team",
-                completedAt: "2025-12-03T10:15:00Z",
-                deadline: "2025-12-03T15:00:00Z"
-              }
-            ],
-            askingTasks: [
-              {
-                id: "asking003",
-                title: "Validate API endpoints",
-                orderId: "order005",
-                orderNumber: "ORD-2025-005",
-                customerName: "API Solutions",
-                serviceName: "API Validation",
-                serviceType: "ASKING_SERVICE",
-                teamName: "QA Team",
-                currentStage: "SHARED",
-                completedAt: "2025-12-03T09:30:00Z",
-                completedBy: "user004",
-                completedByName: "Sarah Wilson",
-                deadline: "2025-12-03T14:00:00Z"
-              }
-            ],
-            totalTasks: 19
-          }
-        ]
       }
     }
     

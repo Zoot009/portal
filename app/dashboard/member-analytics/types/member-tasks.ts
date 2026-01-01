@@ -12,6 +12,7 @@ export interface MemberTasksResponse {
     totalServiceTasks: number
     totalAskingTasks: number
     totalTasks: number
+    totalAssignedTasks: number
     dateRange: {
       specificDate: string | null
       startDate: string | null
@@ -32,6 +33,7 @@ export interface MemberData {
   serviceTasks: ServiceTask[]
   askingTasks: AskingTask[]
   totalTasks: number
+  assignedTasksCount: number
 }
 
 export interface ServiceTask {

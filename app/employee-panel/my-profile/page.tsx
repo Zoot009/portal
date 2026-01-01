@@ -11,13 +11,14 @@ import { Upload, FileText, Download, X } from "lucide-react"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { useUser } from "@clerk/nextjs"
-import { useQuery, useMutation } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { createSupabaseClient } from "@/lib/supabase"
 
 const supabase = createSupabaseClient()
 
 export default function MyProfilePage() {
   const { user } = useUser()
+  const queryClient = useQueryClient()
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null)
   const [profilePhotoBlobUrl, setProfilePhotoBlobUrl] = useState<string>("")
   const [loadedPhotoUrl, setLoadedPhotoUrl] = useState<string>("")
@@ -144,11 +145,56 @@ export default function MyProfilePage() {
     }
   }
 
-  const removePhoto = () => {
-    setProfilePhoto(null)
-    setProfilePhotoBlobUrl("")
-    if (profilePhotoBlobUrl) {
-      URL.revokeObjectURL(profilePhotoBlobUrl)
+  const removePhoto = async () => {
+    try {
+      // If there's a new photo selected (blob URL), just clear it
+      if (profilePhotoBlobUrl) {
+        URL.revokeObjectURL(profilePhotoBlobUrl)
+        setProfilePhoto(null)
+        setProfilePhotoBlobUrl("")
+        toast.success('Photo selection cleared')
+        return
+      }
+
+      // If there's an existing photo loaded from the server, delete it
+      if (loadedPhotoUrl && existingData?.documents?.passportPhoto) {
+        const userId = user?.id
+        if (!userId) return
+
+        // Delete from Supabase bucket
+        const { error: deleteError } = await supabase.storage
+          .from('employee-documents')
+          .remove([existingData.documents.passportPhoto])
+        
+        if (deleteError) {
+          console.error('Error deleting photo from bucket:', deleteError)
+        }
+
+        // Update database to remove the photo reference
+        const response = await fetch('/api/profile/documents', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            documents: {
+              passportPhoto: null
+            }
+          })
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to update database')
+        }
+
+        // Clear the loaded photo
+        setLoadedPhotoUrl("")
+        toast.success('Photo removed successfully')
+        
+        // Refetch data to update UI
+        await queryClient.invalidateQueries({ queryKey: ['profile-documents'] })
+      }
+    } catch (error) {
+      console.error('Error removing photo:', error)
+      toast.error('Failed to remove photo')
     }
   }
 
@@ -170,7 +216,13 @@ export default function MyProfilePage() {
       throw new Error('File too large')
     }
 
-    const filePath = `${userId}/${type}-${Date.now()}-${file.name}`
+    // Sanitize filename - remove special characters and spaces
+    const sanitizedFileName = file.name
+      .replace(/[^a-zA-Z0-9.-]/g, '_') // Replace special chars with underscore
+      .replace(/_{2,}/g, '_') // Replace multiple underscores with single
+      .replace(/^_+|_+$/g, '') // Remove leading/trailing underscores
+
+    const filePath = `${userId}/${type}-${Date.now()}-${sanitizedFileName}`
     const { error } = await supabase.storage
       .from('employee-documents')
       .upload(filePath, file)
@@ -216,7 +268,7 @@ export default function MyProfilePage() {
       if (!response.ok) throw new Error('Failed to save profile')
       return response.json()
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('Profile updated successfully!')
       setDocuments({
         aadharCard: null,
@@ -227,6 +279,9 @@ export default function MyProfilePage() {
       })
       setProfilePhoto(null)
       setProfilePhotoBlobUrl("")
+      
+      // Refetch data to update UI
+      await queryClient.invalidateQueries({ queryKey: ['profile-documents'] })
     },
     onError: (error) => {
       toast.error(`Failed to update profile: ${error.message}`)
@@ -293,7 +348,7 @@ export default function MyProfilePage() {
       }
 
       // Update database to remove the document reference
-      await fetch('/api/profile/documents', {
+      const response = await fetch('/api/profile/documents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -303,10 +358,14 @@ export default function MyProfilePage() {
         })
       })
 
+      if (!response.ok) {
+        throw new Error('Failed to update database')
+      }
+
       toast.success('Document deleted successfully')
       
       // Refetch data to update UI
-      window.location.reload()
+      await queryClient.invalidateQueries({ queryKey: ['profile-documents'] })
     } catch (error) {
       console.error('Error deleting document:', error)
       toast.error('Failed to delete document')

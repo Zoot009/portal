@@ -308,7 +308,7 @@ export default function WorkLogsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Employees</SelectItem>
+                  <SelectItem value="all">All Tags</SelectItem>
                   <SelectItem value="submitted">Submitted Only</SelectItem>
                   <SelectItem value="not-submitted">Not Submitted Only</SelectItem>
                   <SelectItem value="missing-mandatory">Missing Mandatory Tags</SelectItem>
@@ -345,19 +345,19 @@ export default function WorkLogsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Not Submitted</CardTitle>
-            <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+            <XCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600 dark:text-red-400">{submissionData?.notSubmitted || 0}</div>
+            <div className="text-2xl font-bold">{submissionData?.notSubmitted || 0}</div>
           </CardContent>
         </Card>
-        <Card className="border-orange-200 dark:border-orange-800">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Missing Mandatory</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{submissionData?.missingMandatory || 0}</div>
+            <div className="text-2xl font-bold">{submissionData?.missingMandatory || 0}</div>
             <p className="text-xs text-muted-foreground mt-1">
               Employees with missing mandatory tags
             </p>
@@ -377,7 +377,7 @@ export default function WorkLogsPage() {
         </CardHeader>
         <CardContent>
           {statusLoading ? (
-            <div className="flex items-center justify-center py-12">
+            <div className="flex items-center justify-center py-12">s
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
           ) : !dateFilter ? (
@@ -414,7 +414,7 @@ export default function WorkLogsPage() {
                 </TableHeader>
                 <TableBody>
                   {paginatedEmployees.map((empStatus: EmployeeSubmissionStatus) => (
-                  <TableRow key={empStatus.employee.id} className={!empStatus.hasSubmitted ? 'bg-red-50 dark:bg-red-950/20' : ''}>
+                  <TableRow key={empStatus.employee.id}>
                     <TableCell>
                       {empStatus.hasSubmitted ? (
                         <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800">
@@ -422,7 +422,7 @@ export default function WorkLogsPage() {
                           Submitted
                         </Badge>
                       ) : (
-                        <Badge variant="destructive" className="dark:bg-red-900/30 dark:text-red-400">
+                        <Badge variant="outline">
                           <XCircle className="h-3 w-3 mr-1" />
                           Not Submitted
                         </Badge>
@@ -440,11 +440,11 @@ export default function WorkLogsPage() {
                     <TableCell className="text-center">
                       {empStatus.totalAssignedTags - empStatus.totalTags > 0 ? (
                         <div className="flex items-center justify-center gap-1">
-                          <Badge variant="outline" className={`${empStatus.hasMissingMandatoryTags ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-300 dark:border-red-700' : 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border-orange-300 dark:border-orange-700'}`}>
+                          <Badge variant="outline">
                             {empStatus.totalAssignedTags - empStatus.totalTags}
                           </Badge>
                           {empStatus.hasMissingMandatoryTags && (
-                            <AlertTriangle className="h-3 w-3 text-red-600 dark:text-red-400" />
+                            <AlertTriangle className="h-3 w-3 text-muted-foreground" />
                           )}
                         </div>
                       ) : (

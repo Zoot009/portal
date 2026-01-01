@@ -435,7 +435,7 @@ export default function MyPenaltiesPage() {
                         </p>
                         
                         {penalty.notes && (
-                          <div className="mt-2 p-2 bg-muted rounded text-xs text-muted-foreground">
+                          <div className="mt-2 p-2 bg-muted rounded text-xs">
                             <strong>Notes:</strong> {penalty.notes}
                           </div>
                         )}
