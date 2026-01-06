@@ -48,7 +48,7 @@ const statusColors: Record<string, string> = {
 export default function AttendanceRecordsPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [employeeSearch, setEmployeeSearch] = useState('')
-  const [salaryCycleFilter, setSalaryCycleFilter] = useState('current')
+  const [salaryCycleFilter, setSalaryCycleFilter] = useState('all')
   const [quickFilter, setQuickFilter] = useState('')
 
   // Calculate dynamic pay cycles
@@ -56,7 +56,7 @@ export default function AttendanceRecordsPage() {
   const previousCycle = getPayCycleByOffset(-1)
   const currentCycleLabel = formatPayCyclePeriod(currentCycle.start, currentCycle.end)
   const previousCycleLabel = formatPayCyclePeriod(previousCycle.start, previousCycle.end)
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadDate, setUploadDate] = useState(new Date().toISOString().split('T')[0])
@@ -547,7 +547,7 @@ export default function AttendanceRecordsPage() {
     window.location.href = `/attendance/edited-records-list`
   }
 
-
+  console.log(availableDates)
 
   return (
     <RoleGuard allowedRoles={['ADMIN', 'TEAMLEADER']}>
