@@ -483,6 +483,12 @@ export default function MyAttendanceRecordsPage() {
     if (record.status === 'PRESENT' || record.status === 'WFH_APPROVED') acc.present++
     if (record.status === 'ABSENT') acc.absent++
     
+    // Count Sundays
+    const recordDate = new Date(record.date)
+    if (isSunday(recordDate)) {
+      acc.sundays++
+    }
+    
     // Calculate hours using the same live calculation as the table display
     const liveHoursStr = calculateTotalHoursLive(
       record.checkInTime, 
@@ -524,7 +530,8 @@ export default function MyAttendanceRecordsPage() {
     absent: 0, 
     currentTotalMinutes: 0, 
     originalTotalMinutes: 0,
-    daysWithHours: 0 
+    daysWithHours: 0,
+    sundays: 0
   })
 
   // Convert back to hours for display
@@ -532,6 +539,32 @@ export default function MyAttendanceRecordsPage() {
   const originalTotalHours = minutesToHours(stats.originalTotalMinutes)
   const hoursAdjusted = currentTotalHours - originalTotalHours
   const avgWorkHours = stats.daysWithHours > 0 ? currentTotalHours / stats.daysWithHours : 0
+  
+  // Calculate working days (exclude Sundays)
+  const totalDays = stats.totalRecords
+  const workingDaysInFilter = totalDays - stats.sundays
+  const expectedMinutes = workingDaysInFilter * 500 // 8 hours 20 minutes = 500 minutes
+  const expectedHours = minutesToHours(expectedMinutes)
+
+  // Filter records for table display - exclude Sundays with no work hours and no overtime
+  const displayRecords = filteredRecords.filter(record => {
+    const recordDate = new Date(record.date)
+    if (isSunday(recordDate)) {
+      // Only show Sunday if there are work hours or overtime
+      const liveHoursStr = calculateTotalHoursLive(
+        record.checkInTime, 
+        record.breakInTime, 
+        record.breakOutTime, 
+        record.checkOutTime, 
+        record.overtime
+      )
+      const [hours, minutes] = liveHoursStr.split(':').map(Number)
+      const totalMinutes = (hours * 60) + minutes
+      
+      return totalMinutes > 0 || (record.overtime && record.overtime > 0)
+    }
+    return true // Show all non-Sunday records
+  })
 
   // Calculate hours goal for current salary cycle
   const calculateHoursGoal = () => {
@@ -667,10 +700,10 @@ export default function MyAttendanceRecordsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {loading ? '-' : formatHoursToTime((stats.present + stats.absent) * (8 + 20/60))}
+              {loading ? '-' : formatHoursToTime(expectedHours)}
             </div>
             <p className="text-xs text-muted-foreground">
-              {stats.present + stats.absent} days @ 08:20/day
+              {workingDaysInFilter} days @ 08:20/day (excl. {stats.sundays} Sundays)
             </p>
           </CardContent>
         </Card>
@@ -825,7 +858,7 @@ export default function MyAttendanceRecordsPage() {
                 </>
               )}
             </div>
-          ) : filteredRecords.length === 0 ? (
+          ) : displayRecords.length === 0 ? (
             <div className="flex items-center justify-center py-8">
               <div className="text-muted-foreground">No attendance records found</div>
             </div>
@@ -847,7 +880,7 @@ export default function MyAttendanceRecordsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredRecords.map((record) => (
+                {displayRecords.map((record) => (
                   <React.Fragment key={record.id}>
                     <TableRow 
                       className={`hover:bg-gray transition-colors ${record.hasBeenEdited ? 'cursor-pointer' : ''}`}

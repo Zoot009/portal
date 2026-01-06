@@ -212,7 +212,7 @@ export default function AttendanceRecordsPage() {
   }
 
   // Handle file upload
-  const handleFileUpload = async () => {
+  const                                                                                                                                                                                   handleFileUpload = async () => {
     if (!selectedFile) {
       toast.error('Please select a file to upload')
       return
