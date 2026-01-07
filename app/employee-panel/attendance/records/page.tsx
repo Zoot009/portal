@@ -702,9 +702,6 @@ export default function MyAttendanceRecordsPage() {
             <div className="text-2xl font-bold text-green-600">
               {loading ? '-' : formatHoursToTime(expectedHours)}
             </div>
-            <p className="text-xs text-muted-foreground">
-              {workingDaysInFilter} days @ 08:20/day (excl. {stats.sundays} Sundays)
-            </p>
           </CardContent>
         </Card>
 
