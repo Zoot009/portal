@@ -204,12 +204,14 @@ export default function BreakPage() {
     }
   }, [activeBreak, currentTime])
 
-  // Start break mutation with validation
+  // Start break mutation with validation and optimistic update
   const startBreakMutation = useMutation({
     mutationFn: async () => {
       if (!employeeId || isNaN(employeeId)) {
         throw new Error('Invalid employee ID. Please refresh the page and try again.')
       }
+      
+      const clientStartTime = new Date().toISOString()
       
       const response = await fetch('/api/breaks/start', {
         method: 'POST',
@@ -217,7 +219,10 @@ export default function BreakPage() {
           'Content-Type': 'application/json',
           'Cache-Control': 'no-cache' 
         },
-        body: JSON.stringify({ employeeId: Number(employeeId) }),
+        body: JSON.stringify({ 
+          employeeId: Number(employeeId),
+          clientStartTime // Send client time to sync with server
+        }),
       })
       if (!response.ok) {
         const error = await response.json()
@@ -225,16 +230,45 @@ export default function BreakPage() {
       }
       return response.json()
     },
+    onMutate: async () => {
+      // Cancel any outgoing refetches to prevent them from overwriting our optimistic update
+      await queryClient.cancelQueries({ queryKey: ['active-break', employeeId] })
+      
+      // Snapshot the previous value
+      const previousBreak = queryClient.getQueryData(['active-break', employeeId])
+      
+      // Optimistically update to show the new break immediately
+      const optimisticBreak = {
+        success: true,
+        data: {
+          id: -1, // Temporary ID
+          employeeId: employeeId!,
+          startTime: new Date().toISOString(),
+          endTime: null,
+          duration: null,
+          breakDate: new Date().toISOString().split('T')[0],
+          status: 'ACTIVE',
+          createdAt: new Date().toISOString(),
+        }
+      }
+      
+      queryClient.setQueryData(['active-break', employeeId], optimisticBreak)
+      
+      return { previousBreak }
+    },
     onSuccess: (data) => {
-      // Immediately refetch both queries
-      queryClient.invalidateQueries({ queryKey: ['active-break', employeeId] })
-      queryClient.invalidateQueries({ queryKey: ['break-history-today', employeeId] })
-      // Force immediate refetch
+      // Update with actual server data
+      queryClient.setQueryData(['active-break', employeeId], data)
+      // Refetch to ensure sync
       queryClient.refetchQueries({ queryKey: ['active-break', employeeId] })
-      queryClient.refetchQueries({ queryKey: ['break-history-today', employeeId] })
+      queryClient.invalidateQueries({ queryKey: ['break-history-today', employeeId] })
       toast.success('Break started')
     },
-    onError: (error: any) => {
+    onError: (error: any, variables, context) => {
+      // Rollback optimistic update on error
+      if (context?.previousBreak) {
+        queryClient.setQueryData(['active-break', employeeId], context.previousBreak)
+      }
       toast.error(error.message)
     },
   })

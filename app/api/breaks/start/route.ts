@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { employeeId } = body
+    const { employeeId, clientStartTime } = body
 
     if (!employeeId) {
       return NextResponse.json(
@@ -49,6 +49,18 @@ export async function POST(request: NextRequest) {
 
     // Create new break session
     const now = new Date()
+    
+    // Use client time if provided and valid, otherwise use server time
+    let breakStartTime = now
+    if (clientStartTime) {
+      const clientTime = new Date(clientStartTime)
+      // Only use client time if it's within 30 seconds of server time to prevent manipulation
+      const timeDiff = Math.abs(now.getTime() - clientTime.getTime())
+      if (!isNaN(clientTime.getTime()) && timeDiff < 30000) {
+        breakStartTime = clientTime
+      }
+    }
+    
     const today = new Date(now)
     today.setHours(0, 0, 0, 0)
 
@@ -56,7 +68,7 @@ export async function POST(request: NextRequest) {
       data: {
         employeeId: numericEmployeeId,
         breakDate: today,
-        breakInTime: now,
+        breakInTime: breakStartTime,
         isActive: true,
       },
     })
