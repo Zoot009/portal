@@ -829,24 +829,12 @@ export default function MyAttendanceRecordsPage() {
           <PopoverTrigger asChild>
             <Button
               variant="outline"
+              size="icon"
               className={cn(
-                "w-[280px] justify-start text-left font-normal",
                 !customDateRange && "text-muted-foreground"
               )}
             >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {customDateRange?.from ? (
-                customDateRange.to ? (
-                  <>
-                    {format(customDateRange.from, "LLL dd, y")} -{" "}
-                    {format(customDateRange.to, "LLL dd, y")}
-                  </>
-                ) : (
-                  format(customDateRange.from, "LLL dd, y")
-                )
-              ) : (
-                <span>Custom date range</span>
-              )}
+              <CalendarIcon className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
@@ -856,7 +844,7 @@ export default function MyAttendanceRecordsPage() {
               defaultMonth={customDateRange?.from}
               selected={customDateRange}
               onSelect={setCustomDateRange}
-              numberOfMonths={2}
+              numberOfMonths={1}
             />
             {customDateRange && (
               <div className="p-3 border-t">
