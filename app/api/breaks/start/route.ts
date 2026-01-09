@@ -48,23 +48,37 @@ export async function POST(request: NextRequest) {
     }
 
     // Create new break session
-    const today = new Date()
+    const now = new Date()
+    const today = new Date(now)
     today.setHours(0, 0, 0, 0)
 
     const newBreak = await prisma.break.create({
       data: {
         employeeId: numericEmployeeId,
         breakDate: today,
-        breakInTime: new Date(),
+        breakInTime: now,
         isActive: true,
       },
     })
 
-    return NextResponse.json({
-      success: true,
-      message: 'Break started successfully',
-      data: newBreak,
-    })
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'Break started successfully',
+        data: {
+          ...newBreak,
+          breakInTime: newBreak.breakInTime?.toISOString(),
+          breakOutTime: newBreak.breakOutTime?.toISOString() || null,
+          createdAt: newBreak.createdAt?.toISOString(),
+        },
+        serverTime: now.toISOString(),
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+        },
+      }
+    )
   } catch (error: any) {
     console.error('Error starting break:', error)
     return NextResponse.json(

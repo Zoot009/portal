@@ -48,9 +48,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate duration in minutes
+    const now = new Date()
     const startTime = new Date(activeBreak.breakInTime!).getTime()
-    const endTime = new Date().getTime()
-    const durationMinutes = Math.floor((endTime - startTime) / 60000)
+    const endTime = now.getTime()
+    const durationMinutes = Math.max(0, Math.floor((endTime - startTime) / 60000))
 
     // Update the break record
     const updatedBreak = await prisma.break.update({
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
         id: activeBreak.id,
       },
       data: {
-        breakOutTime: new Date(),
+        breakOutTime: now,
         breakDuration: durationMinutes,
         isActive: false,
       },
@@ -67,11 +68,24 @@ export async function POST(request: NextRequest) {
     // Gamification features have been disabled
     // Points for compliant breaks are no longer awarded
 
-    return NextResponse.json({
-      success: true,
-      message: 'Break ended successfully',
-      data: updatedBreak,
-    })
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'Break ended successfully',
+        data: {
+          ...updatedBreak,
+          breakInTime: updatedBreak.breakInTime?.toISOString(),
+          breakOutTime: updatedBreak.breakOutTime?.toISOString(),
+          createdAt: updatedBreak.createdAt?.toISOString(),
+        },
+        serverTime: now.toISOString(),
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+        },
+      }
+    )
   } catch (error: any) {
     console.error('Error ending break:', error)
     return NextResponse.json(

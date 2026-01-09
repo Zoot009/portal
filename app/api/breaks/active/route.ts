@@ -44,18 +44,29 @@ export async function GET(request: NextRequest) {
     const transformedBreak = activeBreak ? {
       id: activeBreak.id,
       employeeId: activeBreak.employeeId,
-      startTime: activeBreak.breakInTime,
-      endTime: activeBreak.breakOutTime,
+      startTime: activeBreak.breakInTime?.toISOString(), // Ensure ISO string format
+      endTime: activeBreak.breakOutTime?.toISOString() || null,
       duration: activeBreak.breakDuration,
       breakDate: activeBreak.breakDate,
       status: activeBreak.isActive ? 'ACTIVE' : 'COMPLETED',
-      createdAt: activeBreak.createdAt,
+      createdAt: activeBreak.createdAt?.toISOString(),
+      serverTime: new Date().toISOString(), // Include server time for sync validation
     } : null
 
-    return NextResponse.json({
-      success: true,
-      data: transformedBreak,
-    })
+    return NextResponse.json(
+      {
+        success: true,
+        data: transformedBreak,
+        serverTime: new Date().toISOString(), // Also at root level
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      }
+    )
   } catch (error: any) {
     console.error('Error fetching active break:', error)
     return NextResponse.json(

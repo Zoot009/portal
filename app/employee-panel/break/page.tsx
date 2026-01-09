@@ -48,7 +48,7 @@ export default function BreakPage() {
   const employeeId = authData?.employee?.id ? Number(authData.employee.id) : null
 
   // Fetch active break session with enhanced validation
-  const { data: activeBreakData, isLoading } = useQuery({
+  const { data: activeBreakData, isLoading, isFetching } = useQuery({
     queryKey: ['active-break', employeeId],
     queryFn: async () => {
       if (!employeeId || isNaN(employeeId)) {
@@ -69,6 +69,8 @@ export default function BreakPage() {
     refetchInterval: 5000, // Refetch every 5 seconds to keep data fresh
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    // Prevent showing stale data while refetching
+    placeholderData: (previousData) => previousData,
   })
 
   // Fetch today's break history for stats with validation
@@ -164,12 +166,39 @@ export default function BreakPage() {
     return () => clearInterval(timer)
   }, [])
 
-  // Calculate elapsed time for active break
+  // Calculate elapsed time for active break with proper validation
   useEffect(() => {
-    if (activeBreak) {
-      const startTime = new Date(activeBreak.startTime).getTime()
-      const elapsed = Math.floor((currentTime.getTime() - startTime) / 1000)
-      setElapsedTime(elapsed)
+    if (activeBreak && activeBreak.startTime) {
+      try {
+        // Parse start time - handle both ISO strings and Date objects
+        const startTime = new Date(activeBreak.startTime).getTime()
+        
+        // Validate that startTime is a valid timestamp
+        if (isNaN(startTime) || startTime <= 0) {
+          console.error('Invalid start time:', activeBreak.startTime)
+          setElapsedTime(0)
+          return
+        }
+        
+        const now = Date.now()
+        const elapsed = Math.floor((now - startTime) / 1000)
+        
+        // Only update if elapsed time is valid (non-negative and reasonable)
+        if (elapsed >= 0 && elapsed < 86400) { // Less than 24 hours
+          setElapsedTime(elapsed)
+        } else if (elapsed < 0) {
+          // Future time - might indicate clock sync issue
+          console.warn('Clock sync issue detected - start time is in the future')
+          setElapsedTime(0)
+        } else {
+          // Very large elapsed time
+          console.warn('Unusual elapsed time detected:', elapsed)
+          setElapsedTime(elapsed) // Still show it, but log warning
+        }
+      } catch (error) {
+        console.error('Error calculating elapsed time:', error)
+        setElapsedTime(0)
+      }
     } else {
       setElapsedTime(0)
     }
