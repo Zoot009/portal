@@ -10,9 +10,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Switch } from "@/components/ui/switch"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { CalendarIcon, Clock, Search, UserCheck, UserX, Calendar, TrendingUp, Edit, ChevronDown, ChevronUp, Loader2, CalendarCheck, Info } from "lucide-react"
 import React, { useState, useEffect } from "react"
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSunday, eachDayOfInterval } from "date-fns"
+import { DateRange } from "react-day-picker"
+import { cn } from "@/lib/utils"
 
 interface EditHistoryItem {
   fieldChanged: string
@@ -48,6 +52,7 @@ export default function MyAttendanceRecordsPage() {
   const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState("all")
   const [dateFilter, setDateFilter] = useState("all")
+  const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>()
   const [currentCycle, setCurrentCycle] = useState("")
   const [cycleFilter, setCycleFilter] = useState("current")
   const [availableCycles, setAvailableCycles] = useState<Array<{value: string, label: string, startDate: Date, endDate: Date}>>([])
@@ -131,7 +136,7 @@ export default function MyAttendanceRecordsPage() {
 
   useEffect(() => {
     applyFilters()
-  }, [attendanceRecords, statusFilter, dateFilter, searchDate, cycleFilter])
+  }, [attendanceRecords, statusFilter, dateFilter, searchDate, cycleFilter, customDateRange])
 
   useEffect(() => {
     // Force re-render when employee info changes
@@ -266,19 +271,31 @@ export default function MyAttendanceRecordsPage() {
       filtered = filtered.filter(record => record.status === statusFilter)
     }
 
-    // Date filter
-    const today = new Date()
-    if (dateFilter === "today") {
-      const todayStr = format(today, 'yyyy-MM-dd')
-      filtered = filtered.filter(record => record.date === todayStr)
-    } else if (dateFilter === "week") {
-      const weekStart = format(startOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd')
-      const weekEnd = format(endOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd')
-      filtered = filtered.filter(record => record.date >= weekStart && record.date <= weekEnd)
-    } else if (dateFilter === "month") {
-      const monthStart = format(startOfMonth(today), 'yyyy-MM-dd')
-      const monthEnd = format(endOfMonth(today), 'yyyy-MM-dd')
-      filtered = filtered.filter(record => record.date >= monthStart && record.date <= monthEnd)
+    // Custom date range filter (takes priority over preset date filters)
+    if (customDateRange?.from) {
+      const fromStr = format(customDateRange.from, 'yyyy-MM-dd')
+      if (customDateRange.to) {
+        const toStr = format(customDateRange.to, 'yyyy-MM-dd')
+        filtered = filtered.filter(record => record.date >= fromStr && record.date <= toStr)
+      } else {
+        // Only from date selected
+        filtered = filtered.filter(record => record.date >= fromStr)
+      }
+    } else {
+      // Date filter (only applies if custom range is not set)
+      const today = new Date()
+      if (dateFilter === "today") {
+        const todayStr = format(today, 'yyyy-MM-dd')
+        filtered = filtered.filter(record => record.date === todayStr)
+      } else if (dateFilter === "week") {
+        const weekStart = format(startOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd')
+        const weekEnd = format(endOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd')
+        filtered = filtered.filter(record => record.date >= weekStart && record.date <= weekEnd)
+      } else if (dateFilter === "month") {
+        const monthStart = format(startOfMonth(today), 'yyyy-MM-dd')
+        const monthEnd = format(endOfMonth(today), 'yyyy-MM-dd')
+        filtered = filtered.filter(record => record.date >= monthStart && record.date <= monthEnd)
+      }
     }
 
     // Search filter
@@ -807,6 +824,57 @@ export default function MyAttendanceRecordsPage() {
             <SelectItem value="LEAVE_APPROVED">On Leave</SelectItem>
           </SelectContent>
         </Select>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                "w-[280px] justify-start text-left font-normal",
+                !customDateRange && "text-muted-foreground"
+              )}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {customDateRange?.from ? (
+                customDateRange.to ? (
+                  <>
+                    {format(customDateRange.from, "LLL dd, y")} -{" "}
+                    {format(customDateRange.to, "LLL dd, y")}
+                  </>
+                ) : (
+                  format(customDateRange.from, "LLL dd, y")
+                )
+              ) : (
+                <span>Custom date range</span>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <CalendarComponent
+              initialFocus
+              mode="range"
+              defaultMonth={customDateRange?.from}
+              selected={customDateRange}
+              onSelect={setCustomDateRange}
+              numberOfMonths={2}
+            />
+            {customDateRange && (
+              <div className="p-3 border-t">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => {
+                    setCustomDateRange(undefined)
+                    setDateFilter("all")
+                  }}
+                >
+                  Clear Date Range
+                </Button>
+              </div>
+            )}
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* Attendance Records Table */}
