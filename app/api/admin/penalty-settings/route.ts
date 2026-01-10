@@ -48,15 +48,30 @@ export async function GET(request: NextRequest) {
 
     // Calculate current salary cycle
     const { cycleStartDate, cycleEndDate } = getCurrentSalaryCycle(settings.salaryDayStart)
+    
+    // Create UTC dates for the cycle boundaries to avoid timezone issues
+    const adjustedStartDate = new Date(Date.UTC(
+      cycleStartDate.getFullYear(),
+      cycleStartDate.getMonth(),
+      cycleStartDate.getDate(),
+      0, 0, 0, 0
+    ))
+    
+    const adjustedEndDate = new Date(Date.UTC(
+      cycleEndDate.getFullYear(),
+      cycleEndDate.getMonth(),
+      cycleEndDate.getDate(),
+      23, 59, 59, 999
+    ))
 
     // Get employees with warnings in current cycle
     const employeesWithWarnings = await prisma.warning.groupBy({
       by: ['employeeId'],
       where: {
-        warningType: 'WORK_QUALITY',
+        // Removed warningType filter to count ALL warning types, not just WORK_QUALITY
         warningDate: {
-          gte: cycleStartDate,
-          lte: cycleEndDate,
+          gte: adjustedStartDate,
+          lte: adjustedEndDate,
         },
         isActive: true,
       },

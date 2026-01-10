@@ -8,6 +8,8 @@ export async function GET(request: NextRequest) {
     const employeeId = searchParams.get('employeeId')
     const warningType = searchParams.get('warningType')
     const isActive = searchParams.get('isActive')
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
 
     const where: any = {}
 
@@ -21,6 +23,13 @@ export async function GET(request: NextRequest) {
 
     if (isActive !== null) {
       where.isActive = isActive === 'true'
+    }
+
+    if (startDate && endDate) {
+      where.warningDate = {
+        gte: new Date(startDate),
+        lte: new Date(endDate)
+      }
     }
 
     const warnings = await prisma.warning.findMany({

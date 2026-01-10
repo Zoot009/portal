@@ -419,30 +419,6 @@ function AdminPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col md:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search employees, titles, or descriptions..."
-                  value={searchTerm}
-                  onChange={(e) => { setSearchTerm(e.target.value); handleFilterChange(); }}
-                  className="pl-8"
-                />
-              </div>
-              
-              <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); handleFilterChange(); }}>
-                <SelectTrigger className="w-[180px]">
-                  <Filter className="mr-2 h-4 w-4" />
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All Statuses</SelectItem>
-                  <SelectItem value="ACTIVE">Active</SelectItem>
-                  <SelectItem value="RESOLVED">Resolved</SelectItem>
-                  <SelectItem value="APPLIED">Applied</SelectItem>
-                  <SelectItem value="SERVED">Served</SelectItem>
-                </SelectContent>
-              </Select>
-
               <Select value={cycleFilter} onValueChange={(value) => { setCycleFilter(value); handleFilterChange(); }}>
                 <SelectTrigger className="w-[240px]">
                   <SelectValue placeholder={`Current Cycle (${currentCycleLabel})`} />
