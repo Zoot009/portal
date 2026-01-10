@@ -400,22 +400,6 @@ export default function EmployeesPage() {
           />
         </div>
 
-        <Select value={departmentFilter} onValueChange={(value) => {
-          setDepartmentFilter(value)
-          setCurrentPage(1)
-        }}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Department" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Departments</SelectItem>
-            <SelectItem value="Development">Development</SelectItem>
-            <SelectItem value="Marketing">Marketing</SelectItem>
-            <SelectItem value="HR">HR</SelectItem>
-            <SelectItem value="Sales">Sales</SelectItem>
-          </SelectContent>
-        </Select>
-
         <Select value={roleFilter} onValueChange={(value) => {
           setRoleFilter(value)
           setCurrentPage(1)
@@ -427,20 +411,6 @@ export default function EmployeesPage() {
             <SelectItem value="all">All Roles</SelectItem>
             <SelectItem value="ADMIN">Admin</SelectItem>
             <SelectItem value="EMPLOYEE">Employee</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={statusFilter} onValueChange={(value) => {
-          setStatusFilter(value)
-          setCurrentPage(1)
-        }}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
           </SelectContent>
         </Select>
       </div>

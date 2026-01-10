@@ -336,43 +336,19 @@ export default function PenaltyManagementPage() {
                 {employees.map((emp) => (
                   <div
                     key={emp.employee.id}
-                    className={`p-4 rounded-lg border ${
-                      emp.willGetPenalty
-                        ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800'
-                        : emp.isAtRisk
-                        ? 'bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800'
-                        : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800'
-                    }`}
+                    className="p-4 rounded-lg border"
                   >
                     <div className="flex items-start justify-between">
                       <div>
                         <h4 className="font-semibold">{emp.employee.name}</h4>
                         <p className="text-sm text-muted-foreground">
-                          {emp.employee.employeeCode} • {emp.employee.department}
+                          {emp.employee.employeeCode}
                         </p>
                       </div>
-                      <Badge
-                        variant={
-                          emp.willGetPenalty
-                            ? 'destructive'
-                            : emp.isAtRisk
-                            ? 'outline'
-                            : 'secondary'
-                        }
-                      >
+                      <Badge variant="secondary">
                         {emp.warningCount} / {settings?.warningThreshold} warnings
                       </Badge>
                     </div>
-                    {emp.willGetPenalty && (
-                      <div className="mt-2 text-xs text-red-700 dark:text-red-300 font-medium">
-                        ⚠️ Will receive automatic penalty on next violation
-                      </div>
-                    )}
-                    {emp.isAtRisk && !emp.willGetPenalty && (
-                      <div className="mt-2 text-xs text-orange-700 dark:text-orange-300 font-medium">
-                        ⚡ One warning away from penalty
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
