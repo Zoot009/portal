@@ -113,18 +113,6 @@ const data = {
         },
       ],
     },
-   
-    {
-      title: "Teams",
-      url: "/teams",
-      icon: Layers,
-      items: [
-        {
-          title: "Create Team",
-          url: "/teams/create",
-        },
-      ],
-    },
     {
       title: "Tags & Work",
       url: "/tags",
@@ -223,13 +211,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         !['Admin Management', 'Employees', 'Break Management'].includes(item.title)
       )
     }
-    // ADMIN and TEAMLEADER see everything
+    // ADMIN sees everything
     return data.navMain
   }, [userRole])
 
   // Get secondary nav items based on role
   const getSecondaryNav = React.useMemo(() => {
-    if (userRole === 'ADMIN' || userRole === 'TEAMLEADER') {
+    if (userRole === 'ADMIN') {
       return [
         {
           title: "Issue Management",

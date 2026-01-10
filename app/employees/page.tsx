@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
-import { Search, Plus, Edit, Eye, Users, Download, Upload, MoreVertical, Trash2, FileSpreadsheet, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Plus, Edit, Eye, Users, Download, Upload, MoreVertical, Trash2, FileSpreadsheet, ChevronLeft, ChevronRight, History } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
@@ -55,6 +55,33 @@ export default function EmployeesPage() {
     role: '',
     designation: '',
     isActive: true
+  })
+  
+  // History dialog state
+  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false)
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null)
+  
+  // Fetch current employee (for edit history tracking)
+  const { data: currentEmployee } = useQuery({
+    queryKey: ['current-employee'],
+    queryFn: async () => {
+      const res = await fetch('/api/auth/me')
+      if (!res.ok) return null
+      return res.json()
+    }
+  })
+  
+  // Fetch employee history
+  const { data: employeeHistory, refetch: refetchHistory } = useQuery({
+    queryKey: ['employee-history', selectedEmployeeId],
+    queryFn: async () => {
+      if (!selectedEmployeeId) return []
+      const res = await fetch(`/api/employees/${selectedEmployeeId}/history`)
+      if (!res.ok) return []
+      const result = await res.json()
+      return result.data || []
+    },
+    enabled: !!selectedEmployeeId && isHistoryDialogOpen
   })
 
   // Fetch employees from API (fetch all once, filter on client side)
@@ -101,7 +128,6 @@ export default function EmployeesPage() {
   const getRoleBadge = (role: string) => {
     const roleColors = {
       ADMIN: 'bg-red-500 text-white',
-      TEAMLEADER: 'bg-blue-500 text-white',
       EMPLOYEE: 'bg-gray-500 text-white',
     }
     return (
@@ -227,11 +253,15 @@ export default function EmployeesPage() {
 
     try {
       const response = await fetch(`/api/employees/${editingEmployee.id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(editForm),
+        body: JSON.stringify({
+          ...editForm,
+          editedBy: currentEmployee?.employee?.id,
+          editedByName: currentEmployee?.employee?.name || 'Admin',
+        }),
       })
 
       if (!response.ok) {
@@ -243,9 +273,18 @@ export default function EmployeesPage() {
       setIsEditDialogOpen(false)
       setEditingEmployee(null)
       refetch()
+      
+      // Invalidate current-employee cache to refresh user navigation
+      queryClient.invalidateQueries({ queryKey: ['current-employee'] })
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to update employee')
     }
+  }
+  
+  // Handle view employee history
+  const handleViewHistory = (employeeId: number) => {
+    setSelectedEmployeeId(employeeId)
+    setIsHistoryDialogOpen(true)
   }
 
   if (isLoading) {
@@ -387,7 +426,6 @@ export default function EmployeesPage() {
           <SelectContent>
             <SelectItem value="all">All Roles</SelectItem>
             <SelectItem value="ADMIN">Admin</SelectItem>
-            <SelectItem value="TEAMLEADER">Team Leader</SelectItem>
             <SelectItem value="EMPLOYEE">Employee</SelectItem>
           </SelectContent>
         </Select>
@@ -452,9 +490,6 @@ export default function EmployeesPage() {
                         <SelectItem value="ADMIN">
                           <Badge className="bg-red-500 text-white">ADMIN</Badge>
                         </SelectItem>
-                        <SelectItem value="TEAMLEADER">
-                          <Badge className="bg-blue-500 text-white">TEAMLEADER</Badge>
-                        </SelectItem>
                         <SelectItem value="EMPLOYEE">
                           <Badge className="bg-gray-500 text-white">EMPLOYEE</Badge>
                         </SelectItem>
@@ -481,6 +516,16 @@ export default function EmployeesPage() {
                         >
                           <Edit className="mr-2 h-4 w-4" />
                           Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={(e) => {
+                            e.preventDefault()
+                            handleViewHistory(employee.id)
+                          }}
+                          className="flex items-center cursor-pointer"
+                        >
+                          <History className="mr-2 h-4 w-4" />
+                          View History
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={(e) => {
@@ -648,7 +693,6 @@ export default function EmployeesPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="EMPLOYEE">Employee</SelectItem>
-                      <SelectItem value="TEAMLEADER">Team Leader</SelectItem>
                       <SelectItem value="ADMIN">Admin</SelectItem>
                     </SelectContent>
                   </Select>
@@ -675,6 +719,85 @@ export default function EmployeesPage() {
             </Button>
             <Button onClick={handleSaveEmployee}>
               Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Employee History Dialog */}
+      <Dialog open={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Employee Edit History</DialogTitle>
+            <DialogDescription>
+              View all changes made to this employee's profile
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {employeeHistory && employeeHistory.length > 0 ? (
+              <div className="space-y-3">
+                {employeeHistory.map((record: any) => (
+                  <div key={record.id} className="border rounded-lg p-4 space-y-2">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="outline" className="text-xs">
+                            {record.fieldChanged.replace(/([A-Z])/g, ' $1').trim()}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {format(new Date(record.editedAt), 'PPp')}
+                          </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4 mt-2">
+                          <div>
+                            <p className="text-xs text-muted-foreground">From:</p>
+                            <p className="text-sm font-medium text-red-600 dark:text-red-400">
+                              {record.oldValue || '(empty)'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">To:</p>
+                            <p className="text-sm font-medium text-green-600 dark:text-green-400">
+                              {record.newValue || '(empty)'}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {record.changeReason && (
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Reason: {record.changeReason}
+                          </p>
+                        )}
+                      </div>
+                      
+                      <div className="text-right">
+                        <p className="text-xs font-medium">{record.editedByName}</p>
+                        {record.editedByEmployee && (
+                          <p className="text-xs text-muted-foreground">
+                            {record.editedByEmployee.employeeCode}
+                          </p>
+                        )}
+                        <Badge variant="secondary" className="text-[10px] mt-1">
+                          {record.editedByRole}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <History className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p>No edit history found</p>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsHistoryDialogOpen(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

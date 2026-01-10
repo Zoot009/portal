@@ -80,6 +80,7 @@ function AdminPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [cycleFilter, setCycleFilter] = useState('current');
+  const [employeeFilter, setEmployeeFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [recordsPerPage, setRecordsPerPage] = useState(10);
   const [activeStatusFilter, setActiveStatusFilter] = useState('all'); // For active/non-active tab
@@ -89,6 +90,17 @@ function AdminPage() {
   const previousCycle = getPayCycleByOffset(-1);
   const currentCycleLabel = formatPayCyclePeriod(currentCycle.start, currentCycle.end);
   const previousCycleLabel = formatPayCyclePeriod(previousCycle.start, previousCycle.end);
+
+  // Fetch all employees for dropdown
+  const { data: employeesData } = useQuery({
+    queryKey: ['employees'],
+    queryFn: async () => {
+      const response = await fetch('/api/employees');
+      if (!response.ok) throw new Error('Failed to fetch employees');
+      const result = await response.json();
+      return result.data || [];
+    }
+  });
 
   // Handle tab parameter from URL (for penalty reminder navigation)
   useEffect(() => {
@@ -243,7 +255,8 @@ function AdminPage() {
 
   // Filter functions
   const filteredWarnings = warnings.filter((warning: Warning) => {
-    const matchesSearch = warning.employee.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = warning.employee.name.toLowerCase().includes(searchTerm.toLowerCase()) || warning.employee.employeeCode.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesEmployee = employeeFilter === 'all' || warning.employeeId.toString() === employeeFilter;
     const matchesStatus = statusFilter === 'ALL' || (statusFilter === 'ACTIVE' && warning.isActive) || (statusFilter === 'RESOLVED' && !warning.isActive);
     
     // Active status filter (Active = PRESENT/WFH, Non-Active = ABSENT/LEAVE)
@@ -267,11 +280,12 @@ function AdminPage() {
       }
     }
     
-    return matchesSearch && matchesStatus && matchesCycle;
+    return matchesSearch && matchesEmployee && matchesStatus && matchesCycle;
   });
 
   const filteredPenalties = penalties.filter((penalty: Penalty) => {
-    const matchesSearch = penalty.employee.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = penalty.employee.name.toLowerCase().includes(searchTerm.toLowerCase()) || penalty.employee.employeeCode.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesEmployee = employeeFilter === 'all' || penalty.employeeId.toString() === employeeFilter;
     const matchesStatus = statusFilter === 'ALL' || (statusFilter === 'APPLIED' && !penalty.isPaid) || (statusFilter === 'SERVED' && penalty.isPaid);
     
     // Active status filter - For penalties: Active = Applied (not paid), Non-Active = Served (paid)
@@ -437,6 +451,20 @@ function AdminPage() {
                   <SelectItem value="all">All Cycles</SelectItem>
                   <SelectItem value="current">Current Cycle ({currentCycleLabel})</SelectItem>
                   <SelectItem value="previous">Previous Cycle ({previousCycleLabel})</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Select value={employeeFilter} onValueChange={(value) => { setEmployeeFilter(value); handleFilterChange(); }}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="All Employees" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Employees</SelectItem>
+                  {employeesData && employeesData.map((emp: any) => (
+                    <SelectItem key={emp.id} value={emp.id.toString()}>
+                      {emp.employeeCode} - {emp.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 

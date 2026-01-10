@@ -133,7 +133,7 @@ export default function ReportsPage() {
   ];
 
   return (
-    <RoleGuard allowedRoles={['ADMIN', 'TEAMLEADER']}>
+    <RoleGuard allowedRoles={['ADMIN']}>
       <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">

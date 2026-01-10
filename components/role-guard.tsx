@@ -49,7 +49,7 @@ export function RoleGuard({ children, allowedRoles, fallbackPath = '/employee-pa
           // Redirect based on their actual role - don't allow access
           if (currentEmployee.role === 'EMPLOYEE') {
             router.push('/employee-panel')
-          } else if (currentEmployee.role === 'ADMIN' || currentEmployee.role === 'TEAMLEADER') {
+          } else if (currentEmployee.role === 'ADMIN') {
             router.push('/dashboard')
           } else {
             router.push(fallbackPath)

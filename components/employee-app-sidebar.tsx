@@ -106,8 +106,7 @@ export function EmployeeAppSidebar({ ...props }: React.ComponentProps<typeof Sid
   const { employee } = useAuth()
 
   const isAdmin = employee?.role === 'ADMIN'
-  const isTeamLeader = employee?.role === 'TEAMLEADER'
-  const canAccessAdminPanel = isAdmin || isTeamLeader
+  const canAccessAdminPanel = isAdmin
 
   return (
     <Sidebar variant="inset" {...props}>

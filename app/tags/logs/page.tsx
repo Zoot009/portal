@@ -354,12 +354,12 @@ export default function WorkLogsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Missing Mandatory</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+            <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{submissionData?.missingMandatory || 0}</div>
+            <div className="text-2xl font-bold text-red-600 dark:text-red-400">{submissionData?.missingMandatory || 0}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Employees with missing mandatory tags
+              Employees with missing mandatory tags only
             </p>
           </CardContent>
         </Card>
@@ -438,14 +438,12 @@ export default function WorkLogsPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-center">
-                      {empStatus.totalAssignedTags - empStatus.totalTags > 0 ? (
+                      {empStatus.missingMandatoryTags && empStatus.missingMandatoryTags.length > 0 ? (
                         <div className="flex items-center justify-center gap-1">
-                          <Badge variant="outline">
-                            {empStatus.totalAssignedTags - empStatus.totalTags}
+                          <Badge variant="destructive" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800">
+                            {empStatus.missingMandatoryTags.length}
                           </Badge>
-                          {empStatus.hasMissingMandatoryTags && (
-                            <AlertTriangle className="h-3 w-3 text-muted-foreground" />
-                          )}
+                          <AlertTriangle className="h-3 w-3 text-red-600 dark:text-red-400" />
                         </div>
                       ) : (
                         <span className="text-muted-foreground">-</span>

@@ -37,7 +37,7 @@ export default function HomePage() {
 
         if (role === 'EMPLOYEE') {
           router.push('/employee-panel')
-        } else if (role === 'ADMIN' || role === 'TEAMLEADER') {
+        } else if (role === 'ADMIN') {
           router.push('/dashboard')
         } else {
           router.push('/employee-panel')

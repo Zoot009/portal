@@ -43,7 +43,7 @@ export async function ServerRoleGuard({
       // Redirect based on their actual role
       if (userRole === 'EMPLOYEE') {
         redirect('/employee-panel')
-      } else if (userRole === 'ADMIN' || userRole === 'TEAMLEADER') {
+      } else if (userRole === 'ADMIN') {
         redirect('/dashboard')
       } else {
         redirect(fallbackPath)

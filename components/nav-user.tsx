@@ -50,8 +50,9 @@ export function NavUser() {
       if (!res.ok) return null
       return res.json()
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: false,
+    staleTime: 0, // No cache - always fetch fresh data
+    refetchOnWindowFocus: true, // Refetch when window gains focus
+    refetchOnMount: true, // Refetch on component mount
   })
 
   const { data: profileData } = useQuery({
@@ -134,8 +135,8 @@ export function NavUser() {
               
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{displayName}</span>
-                <span className="truncate text-xs font-mono text-muted-foreground">
-                  {employeeData?.employee?.employeeCode || user.primaryEmailAddress?.emailAddress}
+                <span className="truncate text-xs text-muted-foreground">
+                  {employeeData?.employee?.designation || employeeData?.employee?.role || 'Employee'}
                 </span>
               </div>
               
@@ -159,11 +160,19 @@ export function NavUser() {
                   <span className="truncate font-medium">{displayName}</span>
                   <span className="truncate text-xs">{user.primaryEmailAddress?.emailAddress}</span>
                   
-                  {employeeData?.employee?.employeeCode && (
-                    <div className="flex items-center gap-1 mt-1">
-                      <Badge variant="outline" className="text-[10px] font-mono px-1 py-0">
-                        {employeeData.employee.employeeCode}
-                      </Badge>
+                  {(employeeData?.employee?.designation || employeeData?.employee?.employeeCode) && (
+                    <div className="flex items-center gap-1 mt-1 flex-wrap">
+                      {employeeData?.employee?.employeeCode && (
+                        <Badge variant="outline" className="text-[10px] font-mono px-1 py-0">
+                          {employeeData.employee.employeeCode}
+                        </Badge>
+                      )}
+                      
+                      {employeeData?.employee?.designation && (
+                        <Badge variant="secondary" className="text-[10px] px-1 py-0">
+                          {employeeData.employee.designation}
+                        </Badge>
+                      )}
                       
                       {employeeData.employee.role === 'ADMIN' && (
                         <Badge variant="default" className="text-[10px] px-1 py-0 bg-blue-600">

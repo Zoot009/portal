@@ -67,9 +67,9 @@ export async function GET() {
         }
       }, {
         headers: {
-          'Cache-Control': `private, max-age=${CACHE_TIME}, stale-while-revalidate=${CACHE_TIME * 2}`,
-          'CDN-Cache-Control': `private, max-age=${CACHE_TIME}`,
-          'Vercel-CDN-Cache-Control': `private, max-age=${CACHE_TIME}`,
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
         }
       })
     }
@@ -163,9 +163,9 @@ export async function GET() {
         }
       }, {
         headers: {
-          'Cache-Control': `private, max-age=${CACHE_TIME}, stale-while-revalidate=${CACHE_TIME * 2}`,
-          'CDN-Cache-Control': `private, max-age=${CACHE_TIME}`,
-          'Vercel-CDN-Cache-Control': `private, max-age=${CACHE_TIME}`,
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
         }
       })
     }
