@@ -54,6 +54,7 @@ export default function EmployeesPage() {
     employeeCode: '',
     role: '',
     designation: '',
+    joinDate: '',
     isActive: true
   })
   
@@ -242,6 +243,7 @@ export default function EmployeesPage() {
       employeeCode: employee.employeeCode,
       role: employee.role,
       designation: employee.designation || '',
+      joinDate: employee.joinDate ? format(new Date(employee.joinDate), 'yyyy-MM-dd') : '',
       isActive: employee.isActive
     })
     setIsEditDialogOpen(true)
@@ -641,6 +643,18 @@ export default function EmployeesPage() {
                     value={editForm.employeeCode}
                     onChange={(e) => setEditForm({ ...editForm, employeeCode: e.target.value })}
                     placeholder="e.g., EMP001"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="edit-joinDate">
+                    Join Date
+                  </Label>
+                  <Input
+                    id="edit-joinDate"
+                    type="date"
+                    value={editForm.joinDate}
+                    onChange={(e) => setEditForm({ ...editForm, joinDate: e.target.value })}
                   />
                 </div>
               </div>

@@ -114,6 +114,16 @@ export async function PUT(
     if (updateData.department === '') updateData.department = null
     if (updateData.designation === '') updateData.designation = null
     
+    // Convert joinDate to proper DateTime format if provided
+    if (updateData.joinDate) {
+      if (updateData.joinDate === '') {
+        updateData.joinDate = null
+      } else {
+        // Convert YYYY-MM-DD to ISO-8601 DateTime
+        updateData.joinDate = new Date(updateData.joinDate + 'T00:00:00.000Z')
+      }
+    }
+    
     // Set default role if empty or invalid
     if (!updateData.role || updateData.role === '') {
       updateData.role = 'EMPLOYEE'
@@ -200,6 +210,16 @@ export async function PATCH(
     if (updateData.salaryPin === '') updateData.salaryPin = null
     if (updateData.department === '') updateData.department = null
     if (updateData.designation === '') updateData.designation = null
+    
+    // Convert joinDate to proper DateTime format if provided
+    if (updateData.joinDate) {
+      if (updateData.joinDate === '') {
+        updateData.joinDate = null
+      } else {
+        // Convert YYYY-MM-DD to ISO-8601 DateTime
+        updateData.joinDate = new Date(updateData.joinDate + 'T00:00:00.000Z')
+      }
+    }
     
     // Set default role if empty or invalid
     if (!updateData.role || updateData.role === '') {
