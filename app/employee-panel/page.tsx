@@ -6,6 +6,9 @@ import { CalendarCheck, FileText, Tags, AlertCircle, Clock, TrendingUp, Loader2,
 import { useQuery } from "@tanstack/react-query"
 import { format } from "date-fns"
 import Link from "next/link"
+import { useEffect, useState } from "react"
+import confetti from 'canvas-confetti'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog"
 import { getCurrentPayCycle, formatPayCyclePeriod, isDateInPayCycle } from "@/lib/pay-cycle-utils"
 
 export default function EmployeeDashboardPage() {
@@ -206,8 +209,50 @@ export default function EmployeeDashboardPage() {
 
   const isLoading = attendanceLoading || issuesLoading || logsLoading
 
+  // Congratulatory popup state
+  const [showCongrats, setShowCongrats] = useState(false)
+
+  useEffect(() => {
+    const designation = employeeData?.employee?.designation
+    if (!designation) return
+
+    // Show popup only once per user (persisted in localStorage)
+    const key = `designationCongratsShown_${employeeData?.employee?.id}`
+    const alreadyShown = typeof window !== 'undefined' && localStorage.getItem(key)
+    if (!alreadyShown) {
+      setShowCongrats(true)
+      try {
+        localStorage.setItem(key, '1')
+      } catch {}
+    }
+  }, [employeeData])
+
+  // Fire confetti when popup opens
+  useEffect(() => {
+    if (!showCongrats) return
+
+    const duration = 3000
+    const animationEnd = Date.now() + duration
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 2000 }
+
+    const interval = setInterval(function() {
+      const timeLeft = animationEnd - Date.now()
+
+      if (timeLeft <= 0) return clearInterval(interval)
+
+      const particleCount = 50 * (timeLeft / duration)
+      // since particles fall down, start a bit higher than the viewport
+      confetti(Object.assign({}, defaults, { particleCount, origin: { x: Math.random(), y: Math.random() * 0.6 } }))
+    }, 250)
+
+    // One final big burst
+    confetti({ particleCount: 200, spread: 160, origin: { x: 0.5, y: 0.3 } })
+
+    return () => clearInterval(interval)
+  }, [showCongrats])
+
   return (
-    <RoleGuard allowedRoles={['EMPLOYEE', 'ADMIN', 'TEAMLEADER']} fallbackPath="/dashboard">
+    <RoleGuard allowedRoles={["EMPLOYEE", "ADMIN", "TEAMLEADER"]} fallbackPath="/dashboard">
     <div className="space-y-6">
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
@@ -215,6 +260,31 @@ export default function EmployeeDashboardPage() {
           Welcome back! Here's your overview
         </p>
       </div>
+
+      {/* Congratulatory popup when designation is set */}
+      <Dialog open={showCongrats} onOpenChange={(open) => setShowCongrats(open)}>
+        <DialogContent showCloseButton>
+          <DialogHeader>
+            <DialogTitle className="text-center">Congratulations! 🎉</DialogTitle>
+            <DialogDescription className="text-center">{employeeData?.employee?.designation ? `Your role is ${employeeData.employee.designation}` : ''}</DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-4 text-center text-lg font-medium">🎊</div>
+
+          <div className="mt-6 text-center text-sm text-muted-foreground">Zoot Digital Pvt Ltd</div>
+
+          <DialogFooter>
+            <div className="w-full text-center">
+              <button
+                className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-white hover:bg-primary/90"
+                onClick={() => setShowCongrats(false)}
+              >
+                Thanks
+              </button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Stats Overview */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
