@@ -214,18 +214,34 @@ export default function EmployeeDashboardPage() {
 
   useEffect(() => {
     const designation = employeeData?.employee?.designation
-    if (!designation) return
+    const employeeId = employeeData?.employee?.id
+    
+    // Don't show if no designation
+    if (!designation || !employeeId) return
 
-    // Show popup only once per user (persisted in localStorage)
-    const key = `designationCongratsShown_${employeeData?.employee?.id}`
-    const alreadyShown = typeof window !== 'undefined' && localStorage.getItem(key)
-    if (!alreadyShown) {
+    // Check if popup was shown today
+    const storageKey = `congratsShownDate_${employeeId}`
+    const lastShownDate = typeof window !== 'undefined' ? localStorage.getItem(storageKey) : null
+    const today = new Date().toDateString()
+
+    // Show popup only if it hasn't been shown today
+    if (lastShownDate !== today) {
       setShowCongrats(true)
-      try {
-        localStorage.setItem(key, '1')
-      } catch {}
     }
   }, [employeeData])
+
+  // Handle closing the popup and storing the date
+  const handleClosePopup = () => {
+    const employeeId = employeeData?.employee?.id
+    if (employeeId) {
+      const today = new Date().toDateString()
+      const storageKey = `congratsShownDate_${employeeId}`
+      try {
+        localStorage.setItem(storageKey, today)
+      } catch {}
+    }
+    setShowCongrats(false)
+  }
 
   // Fire confetti when popup opens
   useEffect(() => {
@@ -262,27 +278,38 @@ export default function EmployeeDashboardPage() {
       </div>
 
       {/* Congratulatory popup when designation is set */}
-      <Dialog open={showCongrats} onOpenChange={(open) => setShowCongrats(open)}>
-        <DialogContent showCloseButton>
-          <DialogHeader>
-            <DialogTitle className="text-center">Congratulations! 🎉</DialogTitle>
-            <DialogDescription className="text-center">{employeeData?.employee?.designation ? `Your role is ${employeeData.employee.designation}` : ''}</DialogDescription>
-          </DialogHeader>
-
-          <div className="mt-4 text-center text-lg font-medium">🎊</div>
-
-          <div className="mt-6 text-center text-sm text-muted-foreground">Zoot Digital Pvt Ltd</div>
-
-          <DialogFooter>
-            <div className="w-full text-center">
-              <button
-                className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-white hover:bg-primary/90"
-                onClick={() => setShowCongrats(false)}
-              >
-                Thanks
-              </button>
+      <Dialog open={showCongrats} onOpenChange={(open) => setShowCongrats(open)} modal={true}>
+        <DialogContent className="sm:max-w-md border-0 shadow-2xl bg-background z-[100]" showCloseButton={false}>
+          <div className="flex flex-col items-center text-center space-y-4 py-6">
+            <div className="rounded-full bg-primary/10 p-3 ring-4 ring-primary/5">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+              </svg>
             </div>
-          </DialogFooter>
+            
+            <h2 className="text-2xl font-semibold tracking-tight">Congratulations</h2>
+            
+            <div className="space-y-2">
+              <p className="text-sm text-foreground/70">Your role has been confirmed as</p>
+              <p className="text-xl font-semibold text-primary">
+                {employeeData?.employee?.designation || ''}
+              </p>
+            </div>
+
+            <div className="w-full border-t border-border/40 my-2"></div>
+
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-foreground">Zoot Digital Pvt Ltd</p>
+              <p className="text-xs text-muted-foreground">We're excited to have you on board</p>
+            </div>
+
+            <button
+              className="mt-2 inline-flex items-center justify-center rounded-md bg-primary px-8 py-2.5 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+              onClick={handleClosePopup}
+            >
+              Continue to Dashboard
+            </button>
+          </div>
         </DialogContent>
       </Dialog>
 
