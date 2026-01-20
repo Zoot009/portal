@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
                   
                   if (isOffDay) {
                     // OFF day format: after OFF, look for time entries
-                    let timeIndex = nameEndIndex + 1
+                    const timeIndex = nameEndIndex + 1
                     const timeValues = []
                     
                     // Collect all time values and numeric values
