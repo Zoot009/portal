@@ -96,80 +96,118 @@ export async function POST(request: NextRequest) {
             if (serialMatch) {
               try {
                 // Parse the line using regex to extract fields
-                // Format: Srl EmpCode Cardno EmployeeName Shift Start In LunchOut LunchIn Out Hours Status
-                const match = trimmedLine.match(/^\s*(\d+)\s+(\w+)\s+(\d+)\s+([A-Za-z\s]+?)\s+(S\d+)\s+(\d{2}:\d{2})\s*(\d{2}:\d{2})?\s*(\d{2}:\d{2})?\s*(\d{2}:\d{2})?\s*(\d{2}:\d{2})?\s*(\d+\.\d+)?\s*([PA])\s*/)
+                // Format can be:
+                // 1. Regular: Srl EmpCode Cardno EmployeeName Shift Start In LunchOut LunchIn Out Hours Status
+                // 2. OFF day: Srl EmpCode Cardno EmployeeName OFF [checkIn] [lunchOut] [lunchIn] [checkOut] [Hours] [Status] [Manual]
                 
-                if (match) {
-                  const [, serialNo, empCode, cardNo, employeeName, shift, shiftStart, checkIn, lunchOut, lunchIn, checkOut, hoursWorked, status] = match
+                // Split line into parts for flexible parsing
+                const parts = trimmedLine.split(/\s+/)
+                
+                if (parts.length >= 4) {
+                  const serialNo = parts[0]
+                  const empCode = parts[1]
+                  const cardNo = parts[2]
                   
-                  const record: any = {
-                    employeeCode: empCode.trim(),
-                    employeeName: employeeName.trim(),
-                    shift: shift.trim(),
-                    shiftStart: shiftStart.trim(),
-                    checkInTime: checkIn || null,
-                    breakInTime: lunchOut || null, // lunch out = break in (when employee goes for lunch)
-                    breakOutTime: lunchIn || null, // lunch in = break out (when employee comes back from lunch)
-                    checkOutTime: checkOut || null,
-                    totalHours: hoursWorked ? parseFloat(hoursWorked) : 0,
-                    status: status === 'P' ? 'PRESENT' : status === 'A' ? 'ABSENT' : 'PRESENT',
-                    date: date
+                  // Extract employee name (can be multiple words until we hit OFF, shift pattern, or time)
+                  let nameEndIndex = 3
+                  let employeeName = ''
+                  for (let i = 3; i < parts.length; i++) {
+                    if (parts[i].match(/^(OFF|S\d+|\d{2}:\d{2})$/)) {
+                      nameEndIndex = i
+                      break
+                    }
+                    employeeName += parts[i] + ' '
+                  }
+                  employeeName = employeeName.trim()
+                  
+                  // Determine if it's an OFF day or regular shift day
+                  const isOffDay = parts[nameEndIndex] === 'OFF'
+                  
+                  let shift = null
+                  let shiftStart = null
+                  let checkIn = null
+                  let lunchOut = null
+                  let lunchIn = null
+                  let checkOut = null
+                  let hoursWorked = 0
+                  let status = 'ABSENT'
+                  let hasManualMark = false
+                  
+                  if (isOffDay) {
+                    // OFF day format: after OFF, look for time entries
+                    let timeIndex = nameEndIndex + 1
+                    const timeValues = []
+                    
+                    // Collect all time values and numeric values
+                    for (let i = timeIndex; i < parts.length; i++) {
+                      if (parts[i].match(/^\d{2}:\d{2}$/)) {
+                        timeValues.push(parts[i])
+                      } else if (parts[i].match(/^\d+\.\d+$/)) {
+                        hoursWorked = parseFloat(parts[i])
+                      } else if (parts[i] === 'WO') {
+                        status = 'ABSENT' // Weekly Off without work
+                      } else if (parts[i] === 'POW') {
+                        status = 'PRESENT' // Present On Weekend/Weekly Off
+                      } else if (parts[i] === 'Y') {
+                        hasManualMark = true
+                      }
+                    }
+                    
+                    // Assign time values based on count
+                    if (timeValues.length >= 1) checkIn = timeValues[0]
+                    if (timeValues.length >= 2) lunchOut = timeValues[1]
+                    if (timeValues.length >= 3) lunchIn = timeValues[2]
+                    if (timeValues.length >= 4) checkOut = timeValues[3]
+                    
+                    // If there are time entries, it's a POW (Present On Weekend)
+                    if (timeValues.length > 0 || hoursWorked > 0) {
+                      status = 'PRESENT'
+                    }
+                    
+                  } else {
+                    // Regular shift day format
+                    shift = parts[nameEndIndex]
+                    shiftStart = parts[nameEndIndex + 1]
+                    
+                    // Look for time entries and status
+                    const timeValues = []
+                    for (let i = nameEndIndex + 2; i < parts.length; i++) {
+                      if (parts[i].match(/^\d{2}:\d{2}$/)) {
+                        timeValues.push(parts[i])
+                      } else if (parts[i].match(/^\d+\.\d+$/)) {
+                        hoursWorked = parseFloat(parts[i])
+                      } else if (parts[i] === 'P' || parts[i] === 'A') {
+                        status = parts[i] === 'P' ? 'PRESENT' : 'ABSENT'
+                      } else if (parts[i] === 'Y') {
+                        hasManualMark = true
+                      }
+                    }
+                    
+                    if (timeValues.length >= 1) checkIn = timeValues[0]
+                    if (timeValues.length >= 2) lunchOut = timeValues[1]
+                    if (timeValues.length >= 3) lunchIn = timeValues[2]
+                    if (timeValues.length >= 4) checkOut = timeValues[3]
                   }
                   
-                  attendanceRecords.push(record)
-                  console.log('Parsed SRP record:', record)
-                } else {
-                  // Alternative parsing for lines that don't match the main pattern
-                  // Try to extract at least empcode, name and status
-                  const parts = trimmedLine.split(/\s+/)
-                  if (parts.length >= 4) {
-                    const empCode = parts[1]
-                    let employeeName = ''
-                    let status = 'PRESENT'
-                    let hoursWorked = 0
-                    
-                    // Find employee name (usually after card number)
-                    for (let i = 3; i < parts.length; i++) {
-                      if (parts[i].match(/S\d+/)) { // Found shift, stop here
-                        break
-                      }
-                      if (!parts[i].match(/^\d/)) { // Not a number, likely part of name
-                        employeeName += parts[i] + ' '
-                      }
+                  // Create record if we have at least employee code and name
+                  if (empCode && employeeName) {
+                    const record: any = {
+                      employeeCode: empCode.trim(),
+                      employeeName: employeeName.trim(),
+                      shift: shift,
+                      shiftStart: shiftStart,
+                      checkInTime: checkIn,
+                      breakInTime: lunchOut, // lunch out = break in (when employee goes for lunch)
+                      breakOutTime: lunchIn, // lunch in = break out (when employee comes back from lunch)
+                      checkOutTime: checkOut,
+                      totalHours: hoursWorked,
+                      status: status,
+                      date: date,
+                      isOffDay: isOffDay
                     }
                     
-                    // Find status (P or A)
-                    for (let i = 0; i < parts.length; i++) {
-                      if (parts[i] === 'P' || parts[i] === 'A') {
-                        status = parts[i] === 'P' ? 'PRESENT' : 'ABSENT'
-                        break
-                      }
-                    }
-                    
-                    // Find hours worked (decimal number)
-                    for (let i = 0; i < parts.length; i++) {
-                      if (parts[i].match(/^\d+\.\d+$/)) {
-                        hoursWorked = parseFloat(parts[i])
-                        break
-                      }
-                    }
-                    
-                    if (empCode && employeeName.trim()) {
-                      const record: any = {
-                        employeeCode: empCode.trim(),
-                        employeeName: employeeName.trim(),
-                        checkInTime: null,
-                        breakInTime: null,
-                        breakOutTime: null,
-                        checkOutTime: null,
-                        totalHours: hoursWorked,
-                        status: status,
-                        date: date
-                      }
-                      
-                      attendanceRecords.push(record)
-                      console.log('Parsed SRP record (alternative):', record)
-                    }
+                    attendanceRecords.push(record)
+                    console.log('Parsed SRP record:', record)
                   }
                 }
               } catch (parseError) {

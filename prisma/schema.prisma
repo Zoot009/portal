@@ -22,7 +22,7 @@ model Employee {
   createdAt                  DateTime                @default(now()) @map("created_at")
   updatedAt                  DateTime                @updatedAt @map("updated_at")
   teamLeaderId               Int?                    @map("team_leader_id")
-  baseSalary                 Float?                  @default(0) @map("base_salary")
+  baseSalary                  Float?                  @default(0) @map("base_salary")
   hourlyRate                 Float?                  @default(0) @map("hourly_rate")
   salaryType                 SalaryType              @default(HOURLY) @map("salary_type")
   standardHours              Float?                  @default(160) @map("standard_hours")
