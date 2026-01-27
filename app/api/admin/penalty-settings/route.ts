@@ -106,8 +106,8 @@ export async function GET(request: NextRequest) {
       return {
         employee,
         warningCount: warning._count.id,
-        isAtRisk: warning._count.id >= settings!.warningThreshold - 1,
-        willGetPenalty: warning._count.id >= settings!.warningThreshold,
+        isAtRisk: warning._count.id >= settings!.warningThreshold,
+        willGetPenalty: warning._count.id > settings!.warningThreshold,
       }
     })
 

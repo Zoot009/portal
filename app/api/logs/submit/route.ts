@@ -313,8 +313,8 @@ async function createWarningAndCheckPenalty(employeeId: number, relatedDate: Dat
       },
     })
 
-    // Check if threshold is reached
-    if (warningCount >= settings.warningThreshold) {
+    // Check if threshold is exceeded (after N warnings)
+    if (warningCount > settings.warningThreshold) {
       // Check if penalty already exists for this cycle to avoid duplicates
       const existingPenalty = await prisma.penalty.findFirst({
         where: {

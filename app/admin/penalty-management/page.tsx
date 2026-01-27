@@ -130,7 +130,7 @@ export default function PenaltyManagementPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{settings?.warningThreshold}</div>
-            <p className="text-xs text-muted-foreground">warnings before penalty</p>
+            <p className="text-xs text-muted-foreground">warnings then penalty</p>
           </CardContent>
         </Card>
 
@@ -219,7 +219,7 @@ export default function PenaltyManagementPage() {
                   onChange={(e) => setFormData({ ...formData, warningThreshold: parseInt(e.target.value) || 3 })}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Number of warnings before automatic penalty (1-10)
+                  Number of warnings after which penalty is issued (1-10)
                 </p>
               </div>
 
