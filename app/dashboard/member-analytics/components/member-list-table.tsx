@@ -210,9 +210,9 @@ export function MemberListTable({
   // Filter and sort members
   const filteredData = data.data.filter(member => {
     const searchMatch = searchTerm === '' || 
-      member.member.displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.member.employeeId.toLowerCase().includes(searchTerm.toLowerCase())
+      member.member.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      member.member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      member.member.employeeId?.toLowerCase().includes(searchTerm.toLowerCase())
     
     return searchMatch
   })
@@ -224,8 +224,8 @@ export function MemberListTable({
 
     switch (sortBy) {
       case 'name':
-        aValue = a.member.displayName.toLowerCase()
-        bValue = b.member.displayName.toLowerCase()
+        aValue = a.member.displayName?.toLowerCase() || ''
+        bValue = b.member.displayName?.toLowerCase() || ''
         break
       case 'serviceTasks':
         aValue = a.serviceTasks.length
