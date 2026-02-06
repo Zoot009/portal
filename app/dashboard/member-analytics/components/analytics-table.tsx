@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import {
   Table,
   TableBody,
@@ -11,11 +11,6 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { EmployeeAnalytics } from '../types'
 
@@ -51,12 +46,12 @@ export function AnalyticsTable({ data }: AnalyticsTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[50px]"></TableHead>
-            <TableHead>Employee ID</TableHead>
-            <TableHead>Name</TableHead>
-            <TableHead className="text-right">PMS Activities</TableHead>
-            <TableHead className="text-right">CRM Activities</TableHead>
-            <TableHead className="text-right">Total</TableHead>
+            <TableHead className="w-[50px] text-center"></TableHead>
+            <TableHead className="text-left">Employee ID</TableHead>
+            <TableHead className="text-left">Name</TableHead>
+            <TableHead className="text-center">PMS Activities</TableHead>
+            <TableHead className="text-center">CRM Activities</TableHead>
+            <TableHead className="text-center">Total</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -66,25 +61,22 @@ export function AnalyticsTable({ data }: AnalyticsTableProps) {
             const hasCrmActivity = employee.crm.total > 0
 
             return (
-              <Collapsible
-                key={employee.employeeId}
-                open={isExpanded}
-                onOpenChange={() => toggleRow(employee.employeeId)}
-              >
-                <TableRow className="cursor-pointer hover:bg-muted/50">
-                  <TableCell>
-                    <CollapsibleTrigger asChild>
-                      <Button variant="ghost" size="sm" className="p-0 h-8 w-8">
-                        {isExpanded ? (
-                          <ChevronDown className="h-4 w-4" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </CollapsibleTrigger>
+              <Fragment key={employee.employeeId}>
+                <TableRow 
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => toggleRow(employee.employeeId)}
+                >
+                  <TableCell className="text-center">
+                    <Button variant="ghost" size="sm" className="p-0 h-8 w-8">
+                      {isExpanded ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                    </Button>
                   </TableCell>
-                  <TableCell className="font-mono text-sm">{employee.employeeId}</TableCell>
-                  <TableCell>
+                  <TableCell className="font-mono text-sm text-left">{employee.employeeId}</TableCell>
+                  <TableCell className="text-left">
                     <div>
                       <div className="font-medium">{employee.displayName}</div>
                       {employee.email && (
@@ -92,25 +84,25 @@ export function AnalyticsTable({ data }: AnalyticsTableProps) {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-center">
                     <Badge variant={hasPmsActivity ? 'default' : 'secondary'}>
                       {employee.pms.total}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-center">
                     <Badge variant={hasCrmActivity ? 'default' : 'secondary'}>
                       {employee.crm.total}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-center">
                     <Badge variant="outline" className="font-bold">
                       {employee.totalActivities}
                     </Badge>
                   </TableCell>
                 </TableRow>
 
-                <CollapsibleContent asChild>
-                  <TableRow>
+                {isExpanded && (
+                  <TableRow key={`${employee.employeeId}-details`}>
                     <TableCell colSpan={6} className="bg-muted/30">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4 px-2">
                           {/* PMS Activities */}
@@ -213,8 +205,8 @@ export function AnalyticsTable({ data }: AnalyticsTableProps) {
                         </div>
                       </TableCell>
                     </TableRow>
-                  </CollapsibleContent>
-              </Collapsible>
+                  )}
+              </Fragment>
             )
           })}
         </TableBody>

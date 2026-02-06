@@ -225,17 +225,6 @@ export default function MemberAnalyticsPage() {
               </CardContent>
             </Card>
           </div>
-
-          {/* Data Source Status */}
-          <div className="flex gap-2 text-sm">
-            <Badge variant={data.sources.pms === 'success' ? 'default' : 'destructive'}>
-              PMS: {data.sources.pms}
-            </Badge>
-            <Badge variant={data.sources.crm === 'success' ? 'default' : 'destructive'}>
-              CRM: {data.sources.crm}
-            </Badge>
-          </div>
-
           {/* Analytics Table */}
           <Card>
             <CardHeader>
