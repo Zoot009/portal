@@ -308,18 +308,21 @@ export default function AdminBreaksPage() {
         // Use dynamic current cycle
         const cycleStart = new Date(currentCycle.start)
         const cycleEnd = new Date(currentCycle.end)
+        cycleEnd.setDate(cycleEnd.getDate() + 1)
         cycleEnd.setHours(23, 59, 59, 999)
         matchesSalaryCycle = breakDate >= cycleStart && breakDate <= cycleEnd
       } else if (salaryCycleFilter === 'previous') {
         // Use dynamic previous cycle
         const cycleStart = new Date(previousCycle.start)
         const cycleEnd = new Date(previousCycle.end)
+        cycleEnd.setDate(cycleEnd.getDate() + 1)
         cycleEnd.setHours(23, 59, 59, 999)
         matchesSalaryCycle = breakDate >= cycleStart && breakDate <= cycleEnd
       } else if (salaryCycleFilter === 'next') {
         // Use dynamic next cycle
         const cycleStart = new Date(nextCycle.start)
         const cycleEnd = new Date(nextCycle.end)
+        cycleEnd.setDate(cycleEnd.getDate() + 1)
         cycleEnd.setHours(23, 59, 59, 999)
         matchesSalaryCycle = breakDate >= cycleStart && breakDate <= cycleEnd
       }

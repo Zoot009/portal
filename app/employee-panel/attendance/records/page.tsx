@@ -472,10 +472,15 @@ export default function MyAttendanceRecordsPage() {
         const result = await response.json()
         const breaks = result.data || []
         
+        // Adjust end date to include the full last day
+        const adjustedEndDate = new Date(endDate)
+        adjustedEndDate.setDate(adjustedEndDate.getDate() + 1)
+        adjustedEndDate.setHours(23, 59, 59, 999)
+        
         // Filter breaks within the current cycle
         const cycleBreaks = breaks.filter((breakItem: any) => {
           const breakDate = new Date(breakItem.breakDate)
-          return breakDate >= startDate && breakDate <= endDate && breakItem.status === 'COMPLETED'
+          return breakDate >= startDate && breakDate <= adjustedEndDate && breakItem.status === 'COMPLETED'
         })
         
         // Calculate total break time in minutes
