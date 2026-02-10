@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Send, Loader2 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
@@ -48,6 +49,7 @@ export default function SubmitTagsPage() {
   const [tagEntries, setTagEntries] = useState<TagEntry[]>([
     { id: 1, tagId: "", tagName: "", count: "", minutes: "" }
   ])
+  const [notes, setNotes] = useState('')
   const [showMandatoryDialog, setShowMandatoryDialog] = useState(false)
   const [missingMandatoryNames, setMissingMandatoryNames] = useState<string>('')
   
@@ -179,9 +181,13 @@ export default function SubmitTagsPage() {
         minutes: log.totalMinutes.toString(),
       }))
       setTagEntries(newEntries)
+      
+      // Set notes from submission status
+      setNotes(submissionStatusData.submissionStatus?.notes || '')
     } else {
       // Reset form when switching to an unsubmitted date
       setTagEntries([{ id: 1, tagId: "", tagName: "", count: "", minutes: "" }])
+      setNotes('')
     }
   }, [submissionStatusData, date])
 
@@ -273,6 +279,7 @@ export default function SubmitTagsPage() {
               count: e.count,
               minutes: e.minutes,
             })),
+          notes: notes.trim() || undefined,
         }),
       })
 
@@ -282,6 +289,7 @@ export default function SubmitTagsPage() {
         toast.success(result.message || 'Tags submitted successfully!')
         // Clear the form
         setTagEntries([{ id: 1, tagId: "", tagName: "", count: "", minutes: "" }])
+        setNotes('')
         // Refetch submission status
         refetchSubmission()
       } else {
@@ -621,6 +629,29 @@ export default function SubmitTagsPage() {
                   <span className="text-muted-foreground">Total Time:</span> <span className="font-semibold">{timeFormatted} ({totalMinutes}m)</span>
                 </div>
               </div>
+            </div>
+            
+            {/* Optional Notes Section */}
+            <div className="space-y-2 mb-4">
+              <Label htmlFor="notes" className="text-sm font-medium">
+                Notes <span className="text-muted-foreground font-normal">(Optional)</span>
+              </Label>
+              <Textarea
+                id="notes"
+                placeholder="Add any additional notes or comments about your work..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                disabled={isDateSubmitted}
+                className="min-h-[80px] resize-none"
+                maxLength={500}
+              />
+              <p className="text-xs text-muted-foreground text-right">
+                {notes.length}/500 characters
+              </p>
+            </div>
+
+            {/* Submit Button */}
+            <div className="flex justify-end">
               <Button 
                 type="submit" 
                 className="h-9" 

@@ -167,6 +167,7 @@ model SubmissionStatus {
   isLocked       Boolean  @default(true) @map("is_locked")
   totalMinutes   Int      @default(0) @map("total_minutes")
   statusMessage  String   @default("Data submitted successfully") @map("status_message")
+  notes          String?
   employee       Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@unique([employeeId, submissionDate], name: "employee_date")

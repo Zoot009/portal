@@ -53,6 +53,9 @@ interface EmployeeSubmissionStatus {
     isMandatory: boolean
   }>
   hasMissingMandatoryTags?: boolean
+  submissionStatus?: {
+    notes?: string | null
+  }
 }
 
 export default function WorkLogDetailsPage() {
@@ -287,6 +290,28 @@ export default function WorkLogDetailsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Notes Section */}
+      {employeeData.submissionStatus?.notes && (
+        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+              </svg>
+              Employee Notes
+            </CardTitle>
+            <CardDescription className="text-blue-600 dark:text-blue-400">
+              Additional notes submitted by the employee
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="p-4 rounded-lg bg-card border border-blue-300 dark:border-blue-700">
+              <p className="text-sm whitespace-pre-wrap">{employeeData.submissionStatus.notes}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Work Log Entries */}
       <Card>

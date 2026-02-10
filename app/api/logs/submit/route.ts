@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { employeeId, date, tags } = body
+    const { employeeId, date, tags, notes } = body
 
     // Validate required fields
     if (!employeeId || !date || !Array.isArray(tags)) {
@@ -185,6 +185,7 @@ export async function POST(request: NextRequest) {
           totalMinutes,
           isLocked: true,
           statusMessage: 'Data submitted successfully',
+          notes: notes || null,
         },
         create: {
           employeeId: parseInt(employeeId),
@@ -193,6 +194,7 @@ export async function POST(request: NextRequest) {
           totalMinutes,
           isLocked: true,
           statusMessage: 'Data submitted successfully',
+          notes: notes || null,
         },
       })
 

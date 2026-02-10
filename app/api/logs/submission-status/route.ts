@@ -242,6 +242,9 @@ export async function GET(request: NextRequest) {
         missingTags,
         missingMandatoryTags,
         hasMissingMandatoryTags,
+        submissionStatus: submissionStatus ? {
+          notes: submissionStatus.notes,
+        } : undefined,
       }
     })
 
