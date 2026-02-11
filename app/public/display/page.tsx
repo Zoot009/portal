@@ -147,6 +147,9 @@ export default function PublicDisplayPage() {
   // Sort by total activities descending
   const sortedData = [...filteredData].sort((a, b) => b.totalActivities - a.totalActivities)
 
+  // Get employees with 0 activities
+  const zeroActivityEmployees = filteredData.filter((u) => u.totalActivities === 0)
+
   // Compute summary
   const summary = {
     pmsOnly: filteredData.filter((u) => u.pms.total > 0 && u.crm.total === 0).length,
@@ -248,6 +251,52 @@ export default function PublicDisplayPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Employees with 0 Activities Table */}
+      {zeroActivityEmployees.length > 0 && (
+        <Card className="border-2 border-red-200">
+          <CardHeader>
+            <CardTitle className="text-2xl text-red-600">Employees with 0 Activities</CardTitle>
+            <p className="text-lg text-muted-foreground">
+              {zeroActivityEmployees.length} employee{zeroActivityEmployees.length !== 1 ? 's' : ''} with no activity yesterday
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border border-red-200">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-lg font-semibold">Name</TableHead>
+                    <TableHead className="text-right text-lg font-semibold">PMS</TableHead>
+                    <TableHead className="text-right text-lg font-semibold">CRM</TableHead>
+                    <TableHead className="text-right text-lg font-semibold">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {zeroActivityEmployees.map((employee) => (
+                    <TableRow key={employee.employeeId} className="text-base bg-red-50">
+                      <TableCell className="font-medium">
+                        {employee.displayName}
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {employee.pms.total}
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {employee.crm.total}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className="font-bold text-red-500">
+                          {employee.totalActivities}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Employee Activity Table */}
       <Card className="border-2">
