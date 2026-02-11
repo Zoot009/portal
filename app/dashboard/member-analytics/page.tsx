@@ -98,6 +98,7 @@ export default function MemberAnalyticsPage() {
         totalPmsActivities: 0,
         totalCrmActivities: 0,
         totalActivities: 0,
+        totalTaskCount: 0,
         zeroActivities: 0,
         zeroActivityEmployees: [],
       }
@@ -112,6 +113,7 @@ export default function MemberAnalyticsPage() {
       totalPmsActivities: filteredData.reduce((sum, u) => sum + u.pms.total, 0),
       totalCrmActivities: filteredData.reduce((sum, u) => sum + u.crm.total, 0),
       totalActivities: filteredData.reduce((sum, u) => sum + u.totalActivities, 0),
+      totalTaskCount: filteredData.reduce((sum, u) => sum + (u.pms.totalTaskCount || 0), 0),
       zeroActivities: zeroActivityEmployees.length,
       zeroActivityEmployees: zeroActivityEmployees,
     }
@@ -228,7 +230,7 @@ export default function MemberAnalyticsPage() {
       {data && !isLoading && (
         <>
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -330,6 +332,22 @@ export default function MemberAnalyticsPage() {
               <CardContent>
                 <div className="text-3xl font-bold text-purple-600">
                   {computedSummary.totalCrmActivities}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-blue-200 dark:border-blue-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Total Task Count
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-blue-600">
+                  {computedSummary.totalTaskCount}
+                </div>
+                <div className="text-xs text-muted-foreground mt-2">
+                  Work units completed
                 </div>
               </CardContent>
             </Card>

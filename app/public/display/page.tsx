@@ -54,6 +54,7 @@ interface PMSActivities {
   ordersDelivered: number
   askingTasksCreated: number
   askingTasksCompleted: number
+  totalTaskCount: number
   total: number
 }
 
@@ -158,6 +159,7 @@ export default function PublicDisplayPage() {
     totalPmsActivities: filteredData.reduce((sum, u) => sum + u.pms.total, 0),
     totalCrmActivities: filteredData.reduce((sum, u) => sum + u.crm.total, 0),
     totalActivities: filteredData.reduce((sum, u) => sum + u.totalActivities, 0),
+    totalTaskCount: filteredData.reduce((sum, u) => sum + (u.pms.totalTaskCount || 0), 0),
     zeroActivities: filteredData.filter((u) => u.totalActivities === 0).length,
   }
 
@@ -185,7 +187,7 @@ export default function PublicDisplayPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <Card className="border-2">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg font-medium text-muted-foreground">
@@ -250,6 +252,22 @@ export default function PublicDisplayPage() {
             </div>
           </CardContent>
         </Card>
+
+        <Card className="border-2 border-blue-200 dark:border-blue-800">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-medium text-muted-foreground">
+              Total Task Count
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-5xl font-bold text-blue-600 dark:text-blue-400">
+              {summary.totalTaskCount}
+            </div>
+            <div className="text-xs text-muted-foreground mt-2">
+              Work units completed
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Employees with 0 Activities Table */}
@@ -270,6 +288,7 @@ export default function PublicDisplayPage() {
                     <TableHead className="text-right text-lg font-semibold">PMS</TableHead>
                     <TableHead className="text-right text-lg font-semibold">CRM</TableHead>
                     <TableHead className="text-right text-lg font-semibold">Total</TableHead>
+                    <TableHead className="text-right text-lg font-semibold">Task Count</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -288,6 +307,9 @@ export default function PublicDisplayPage() {
                         <span className="font-bold text-red-500 dark:text-red-400">
                           {employee.totalActivities}
                         </span>
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {employee.pms.totalTaskCount || 0}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -320,6 +342,7 @@ export default function PublicDisplayPage() {
                     <TableHead className="text-right text-lg font-semibold">PMS</TableHead>
                     <TableHead className="text-right text-lg font-semibold">CRM</TableHead>
                     <TableHead className="text-right text-lg font-semibold">Total</TableHead>
+                    <TableHead className="text-right text-lg font-semibold">Task Count</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -345,6 +368,11 @@ export default function PublicDisplayPage() {
                             : 'text-green-600 dark:text-green-400'
                         }`}>
                           {employee.totalActivities}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className={employee.pms.totalTaskCount > 0 ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-muted-foreground'}>
+                          {employee.pms.totalTaskCount || 0}
                         </span>
                       </TableCell>
                     </TableRow>

@@ -42,6 +42,7 @@ interface PMSUser {
     ordersDelivered?: number
     askingTasksCreated?: number
     askingTasksCompleted?: number
+    totalTaskCount?: number
   }
 }
 
@@ -77,6 +78,7 @@ interface CombinedUser {
     ordersDelivered: number
     askingTasksCreated: number
     askingTasksCompleted: number
+    totalTaskCount: number
     total: number
   }
   crm: {
@@ -188,6 +190,7 @@ export async function GET(request: NextRequest) {
         ordersDelivered: pmsUser?.counts.ordersDelivered || pmsUser?.activities?.deliveredOrders?.length || 0,
         askingTasksCreated: pmsUser?.counts.askingTasksCreated || pmsUser?.activities?.askingTasks?.length || 0,
         askingTasksCompleted: pmsUser?.counts.askingTasksCompleted || pmsUser?.activities?.completedAskingTasks?.length || 0,
+        totalTaskCount: pmsUser?.counts.totalTaskCount || 0,
         total: pmsUser?.counts.totalActivities || 0,
       }
 

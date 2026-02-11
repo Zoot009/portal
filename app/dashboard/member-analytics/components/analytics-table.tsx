@@ -224,6 +224,10 @@ export function AnalyticsTable({ data }: AnalyticsTableProps) {
                                 <span className="text-muted-foreground">Asking Tasks Completed:</span>
                                 <span className="font-medium">{employee.pms.askingTasksCompleted}</span>
                               </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Completed Task Count:</span>
+                                <span className="font-medium">{employee.pms.totalTaskCount}</span>
+                              </div>
                             </div>
                           </div>
 
