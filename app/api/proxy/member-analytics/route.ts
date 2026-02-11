@@ -24,13 +24,24 @@ interface PMSUser {
     displayName: string
     email?: string
   }
+  activities?: {
+    orders?: any[]
+    tasks?: any[]
+    completedTasks?: any[]
+    folderLinksAdded?: any[]
+    deliveredOrders?: any[]
+    askingTasks?: any[]
+    completedAskingTasks?: any[]
+  }
   counts: {
     totalActivities: number
-    ordersCreated: number
-    tasksCreated: number
-    tasksCompleted: number
-    folderLinksAdded: number
-    ordersDelivered: number
+    ordersCreated?: number
+    tasksCreated?: number
+    tasksCompleted?: number
+    folderLinksAdded?: number
+    ordersDelivered?: number
+    askingTasksCreated?: number
+    askingTasksCompleted?: number
   }
 }
 
@@ -64,6 +75,8 @@ interface CombinedUser {
     tasksCompleted: number
     folderLinksAdded: number
     ordersDelivered: number
+    askingTasksCreated: number
+    askingTasksCompleted: number
     total: number
   }
   crm: {
@@ -168,11 +181,13 @@ export async function GET(request: NextRequest) {
       const crmUser = crmUsers.get(employeeId)
 
       const pmsActivities = {
-        ordersCreated: pmsUser?.counts.ordersCreated || 0,
-        tasksCreated: pmsUser?.counts.tasksCreated || 0,
-        tasksCompleted: pmsUser?.counts.tasksCompleted || 0,
-        folderLinksAdded: pmsUser?.counts.folderLinksAdded || 0,
-        ordersDelivered: pmsUser?.counts.ordersDelivered || 0,
+        ordersCreated: pmsUser?.counts.ordersCreated || pmsUser?.activities?.orders?.length || 0,
+        tasksCreated: pmsUser?.counts.tasksCreated || pmsUser?.activities?.tasks?.length || 0,
+        tasksCompleted: pmsUser?.counts.tasksCompleted || pmsUser?.activities?.completedTasks?.length || 0,
+        folderLinksAdded: pmsUser?.counts.folderLinksAdded || pmsUser?.activities?.folderLinksAdded?.length || 0,
+        ordersDelivered: pmsUser?.counts.ordersDelivered || pmsUser?.activities?.deliveredOrders?.length || 0,
+        askingTasksCreated: pmsUser?.counts.askingTasksCreated || pmsUser?.activities?.askingTasks?.length || 0,
+        askingTasksCompleted: pmsUser?.counts.askingTasksCompleted || pmsUser?.activities?.completedAskingTasks?.length || 0,
         total: pmsUser?.counts.totalActivities || 0,
       }
 

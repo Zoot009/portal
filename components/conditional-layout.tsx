@@ -19,6 +19,11 @@ export function ConditionalLayout({ children }: { children: React.ReactNode }) {
     return <>{children}</>
   }
 
+  // If on public routes, don't apply this layout or require authentication
+  if (pathname?.startsWith('/public')) {
+    return <>{children}</>
+  }
+
   // Generate breadcrumbs from pathname
   const generateBreadcrumbs = () => {
     if (pathname === '/' || pathname === '/dashboard') {

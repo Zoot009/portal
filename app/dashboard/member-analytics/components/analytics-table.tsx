@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useState } from 'react'
+import { useState } from 'react'
 import {
   Table,
   TableBody,
@@ -11,8 +11,11 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { EmployeeAnalytics } from '../types'
+
+type SortField = 'displayName' | 'pmsTotal' | 'crmTotal' | 'totalActivities'
+type SortDirection = 'asc' | 'desc' | null
 
 interface AnalyticsTableProps {
   data: EmployeeAnalytics[]
@@ -20,6 +23,8 @@ interface AnalyticsTableProps {
 
 export function AnalyticsTable({ data }: AnalyticsTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+  const [sortField, setSortField] = useState<SortField>('totalActivities')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
 
   const toggleRow = (employeeId: string) => {
     setExpandedRows((prev) => {
@@ -32,6 +37,58 @@ export function AnalyticsTable({ data }: AnalyticsTableProps) {
       return newSet
     })
   }
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle direction: desc -> asc -> desc
+      setSortDirection(sortDirection === 'desc' ? 'asc' : 'desc')
+    } else {
+      setSortField(field)
+      setSortDirection('desc')
+    }
+  }
+
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-4 w-4" />
+    }
+    return sortDirection === 'desc' ? 
+      <ArrowDown className="h-4 w-4" /> : 
+      <ArrowUp className="h-4 w-4" />
+  }
+
+  // Sort data
+  const sortedData = [...data].sort((a, b) => {
+    if (!sortDirection) return 0
+    
+    let aValue: string | number
+    let bValue: string | number
+    
+    switch (sortField) {
+      case 'displayName':
+        aValue = a.displayName.toLowerCase()
+        bValue = b.displayName.toLowerCase()
+        break
+      case 'pmsTotal':
+        aValue = a.pms.total
+        bValue = b.pms.total
+        break
+      case 'crmTotal':
+        aValue = a.crm.total
+        bValue = b.crm.total
+        break
+      case 'totalActivities':
+        aValue = a.totalActivities
+        bValue = b.totalActivities
+        break
+      default:
+        return 0
+    }
+    
+    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
+    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
+    return 0
+  })
 
   if (data.length === 0) {
     return (
@@ -46,27 +103,59 @@ export function AnalyticsTable({ data }: AnalyticsTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[50px] text-center"></TableHead>
-            <TableHead className="text-left">Employee ID</TableHead>
-            <TableHead className="text-left">Name</TableHead>
-            <TableHead className="text-center">PMS Activities</TableHead>
-            <TableHead className="text-center">CRM Activities</TableHead>
-            <TableHead className="text-center">Total</TableHead>
+            <TableHead className="w-[50px]"></TableHead>
+            <TableHead>
+              <Button 
+                variant="ghost" 
+                onClick={() => handleSort('displayName')}
+                className="h-8 px-2 font-semibold hover:bg-transparent"
+              >
+                Name {getSortIcon('displayName')}
+              </Button>
+            </TableHead>
+            <TableHead className="text-right">
+              <Button 
+                variant="ghost" 
+                onClick={() => handleSort('pmsTotal')}
+                className="h-8 px-2 font-semibold hover:bg-transparent"
+              >
+                PMS Activities {getSortIcon('pmsTotal')}
+              </Button>
+            </TableHead>
+            <TableHead className="text-right">
+              <Button 
+                variant="ghost" 
+                onClick={() => handleSort('crmTotal')}
+                className="h-8 px-2 font-semibold hover:bg-transparent"
+              >
+                CRM Activities {getSortIcon('crmTotal')}
+              </Button>
+            </TableHead>
+            <TableHead className="text-right">
+              <Button 
+                variant="ghost" 
+                onClick={() => handleSort('totalActivities')}
+                className="h-8 px-2 font-semibold hover:bg-transparent"
+              >
+                Total {getSortIcon('totalActivities')}
+              </Button>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data.map((employee) => {
+          {sortedData.map((employee) => {
             const isExpanded = expandedRows.has(employee.employeeId)
             const hasPmsActivity = employee.pms.total > 0
             const hasCrmActivity = employee.crm.total > 0
 
             return (
-              <Fragment key={employee.employeeId}>
+              <>
                 <TableRow 
+                  key={employee.employeeId}
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() => toggleRow(employee.employeeId)}
                 >
-                  <TableCell className="text-center">
+                  <TableCell>
                     <Button variant="ghost" size="sm" className="p-0 h-8 w-8">
                       {isExpanded ? (
                         <ChevronDown className="h-4 w-4" />
@@ -75,26 +164,26 @@ export function AnalyticsTable({ data }: AnalyticsTableProps) {
                       )}
                     </Button>
                   </TableCell>
-                  <TableCell className="font-mono text-sm text-left">{employee.employeeId}</TableCell>
-                  <TableCell className="text-left">
+                  <TableCell>
                     <div>
                       <div className="font-medium">{employee.displayName}</div>
+                      <div className="text-xs text-muted-foreground font-mono">{employee.employeeId}</div>
                       {employee.email && (
                         <div className="text-sm text-muted-foreground">{employee.email}</div>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="text-right">
                     <Badge variant={hasPmsActivity ? 'default' : 'secondary'}>
                       {employee.pms.total}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="text-right">
                     <Badge variant={hasCrmActivity ? 'default' : 'secondary'}>
                       {employee.crm.total}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="text-right">
                     <Badge variant="outline" className="font-bold">
                       {employee.totalActivities}
                     </Badge>
@@ -103,7 +192,7 @@ export function AnalyticsTable({ data }: AnalyticsTableProps) {
 
                 {isExpanded && (
                   <TableRow key={`${employee.employeeId}-details`}>
-                    <TableCell colSpan={6} className="bg-muted/30">
+                    <TableCell colSpan={5} className="bg-muted/30">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4 px-2">
                           {/* PMS Activities */}
                           <div>
@@ -130,6 +219,10 @@ export function AnalyticsTable({ data }: AnalyticsTableProps) {
                               <div className="flex justify-between">
                                 <span className="text-muted-foreground">Orders Delivered:</span>
                                 <span className="font-medium">{employee.pms.ordersDelivered}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Asking Tasks Completed:</span>
+                                <span className="font-medium">{employee.pms.askingTasksCompleted}</span>
                               </div>
                             </div>
                           </div>
@@ -205,8 +298,8 @@ export function AnalyticsTable({ data }: AnalyticsTableProps) {
                         </div>
                       </TableCell>
                     </TableRow>
-                  )}
-              </Fragment>
+                )}
+              </>
             )
           })}
         </TableBody>

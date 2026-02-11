@@ -10,6 +10,8 @@ export interface PMSActivities {
   tasksCompleted: number
   folderLinksAdded: number
   ordersDelivered: number
+  askingTasksCreated: number
+  askingTasksCompleted: number
   total: number
 }
 
