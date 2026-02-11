@@ -194,7 +194,7 @@ export default function PublicDisplayPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-3">
-              <Users className="h-8 w-8 text-gray-500" />
+              <Users className="h-8 w-8 text-gray-500 dark:text-gray-400" />
               <span className="text-5xl font-bold">{summary.zeroActivities}</span>
             </div>
             <div className="flex gap-2 mt-4 text-sm">
@@ -219,7 +219,7 @@ export default function PublicDisplayPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-3">
-              <TrendingUp className="h-8 w-8 text-green-500" />
+              <TrendingUp className="h-8 w-8 text-green-500 dark:text-green-400" />
               <span className="text-5xl font-bold">{summary.totalActivities}</span>
             </div>
           </CardContent>
@@ -232,7 +232,7 @@ export default function PublicDisplayPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-5xl font-bold text-blue-600">
+            <div className="text-5xl font-bold text-blue-600 dark:text-blue-400">
               {summary.totalPmsActivities}
             </div>
           </CardContent>
@@ -245,7 +245,7 @@ export default function PublicDisplayPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-5xl font-bold text-purple-600">
+            <div className="text-5xl font-bold text-purple-600 dark:text-purple-400">
               {summary.totalCrmActivities}
             </div>
           </CardContent>
@@ -254,15 +254,15 @@ export default function PublicDisplayPage() {
 
       {/* Employees with 0 Activities Table */}
       {zeroActivityEmployees.length > 0 && (
-        <Card className="border-2 border-red-200">
+        <Card className="border-2 border-red-200 dark:border-red-800">
           <CardHeader>
-            <CardTitle className="text-2xl text-red-600">Employees with 0 Activities</CardTitle>
+            <CardTitle className="text-2xl text-red-600 dark:text-red-400">Employees with 0 Activities</CardTitle>
             <p className="text-lg text-muted-foreground">
               {zeroActivityEmployees.length} employee{zeroActivityEmployees.length !== 1 ? 's' : ''} with no activity yesterday
             </p>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border border-red-200">
+            <div className="rounded-md border border-red-200 dark:border-red-800">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -274,7 +274,7 @@ export default function PublicDisplayPage() {
                 </TableHeader>
                 <TableBody>
                   {zeroActivityEmployees.map((employee) => (
-                    <TableRow key={employee.employeeId} className="text-base bg-red-50">
+                    <TableRow key={employee.employeeId} className="text-base bg-red-50 dark:bg-red-950/20">
                       <TableCell className="font-medium">
                         {employee.displayName}
                       </TableCell>
@@ -285,7 +285,7 @@ export default function PublicDisplayPage() {
                         {employee.crm.total}
                       </TableCell>
                       <TableCell className="text-right">
-                        <span className="font-bold text-red-500">
+                        <span className="font-bold text-red-500 dark:text-red-400">
                           {employee.totalActivities}
                         </span>
                       </TableCell>
@@ -329,20 +329,20 @@ export default function PublicDisplayPage() {
                         {employee.displayName}
                       </TableCell>
                       <TableCell className="text-right">
-                        <span className={employee.pms.total > 0 ? 'text-blue-600 font-semibold' : 'text-muted-foreground'}>
+                        <span className={employee.pms.total > 0 ? 'text-blue-600 dark:text-blue-400 font-semibold' : 'text-muted-foreground'}>
                           {employee.pms.total}
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
-                        <span className={employee.crm.total > 0 ? 'text-purple-600 font-semibold' : 'text-muted-foreground'}>
+                        <span className={employee.crm.total > 0 ? 'text-purple-600 dark:text-purple-400 font-semibold' : 'text-muted-foreground'}>
                           {employee.crm.total}
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
                         <span className={`font-bold ${
                           employee.totalActivities === 0 
-                            ? 'text-red-500' 
-                            : 'text-green-600'
+                            ? 'text-red-500 dark:text-red-400' 
+                            : 'text-green-600 dark:text-green-400'
                         }`}>
                           {employee.totalActivities}
                         </span>
