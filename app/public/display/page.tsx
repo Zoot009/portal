@@ -11,24 +11,19 @@
  * - Auto-refreshes every 5 minutes
  * - Read-only display (no interactive elements)
  * - Shows yesterday's data only
- * - Clean, TV-friendly layout
+ * - Same layout as member-analytics but without interactions
  * 
  * Access: /public/display
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { format, subDays } from 'date-fns'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { TrendingUp, Users } from 'lucide-react'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { AlertCircle, TrendingUp, Users } from 'lucide-react'
+import { ReadOnlyAnalyticsTable } from './components/read-only-analytics-table'
 
 // List of user IDs or display names to ignore/exclude from the table
 const IGNORED_USERS: string[] = [
@@ -92,11 +87,12 @@ export default function PublicDisplayPage() {
   const [data, setData] = useState<AnalyticsResponse | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
   const [isLoading, setIsLoading] = useState(true)
-  const yesterday = format(subDays(new Date(), 1), 'MMMM d, yyyy')
+  const [error, setError] = useState<boolean>(false)
+  const yesterdayDate = format(subDays(new Date(), 1), 'yyyy-MM-dd')
 
   const fetchData = async () => {
     try {
-      const yesterdayDate = format(subDays(new Date(), 1), 'yyyy-MM-dd')
+      setError(false)
       const params = new URLSearchParams({
         startDate: yesterdayDate,
         endDate: yesterdayDate,
@@ -107,7 +103,7 @@ export default function PublicDisplayPage() {
       })
 
       if (!response.ok) {
-        console.error('Failed to fetch analytics data')
+        setError(true)
         return
       }
 
@@ -116,6 +112,7 @@ export default function PublicDisplayPage() {
       setLastUpdated(new Date())
     } catch (error) {
       console.error('Error fetching analytics:', error)
+      setError(true)
     } finally {
       setIsLoading(false)
     }
@@ -133,261 +130,257 @@ export default function PublicDisplayPage() {
     return () => clearInterval(intervalId)
   }, [])
 
+  // Auto-scroll functionality
+  useEffect(() => {
+    let scrollInterval: NodeJS.Timeout
+    let isScrollingDown = true
+    const scrollSpeed = 1 // pixels per interval
+    const pauseAtEnd = 3000 // pause for 3 seconds at top/bottom
+
+    const autoScroll = () => {
+      scrollInterval = setInterval(() => {
+        const scrollHeight = document.documentElement.scrollHeight
+        const scrollTop = window.scrollY
+        const clientHeight = window.innerHeight
+
+        if (isScrollingDown) {
+          // Scrolling down
+          if (scrollTop + clientHeight >= scrollHeight - 10) {
+            // Reached bottom, pause then reverse
+            clearInterval(scrollInterval)
+            setTimeout(() => {
+              isScrollingDown = false
+              autoScroll()
+            }, pauseAtEnd)
+          } else {
+            window.scrollBy(0, scrollSpeed)
+          }
+        } else {
+          // Scrolling up
+          if (scrollTop <= 0) {
+            // Reached top, pause then reverse
+            clearInterval(scrollInterval)
+            setTimeout(() => {
+              isScrollingDown = true
+              autoScroll()
+            }, pauseAtEnd)
+          } else {
+            window.scrollBy(0, -scrollSpeed)
+          }
+        }
+      }, 30) // Run every 30ms for smooth scrolling
+    }
+
+    // Start auto-scrolling after initial load
+    const startDelay = setTimeout(() => {
+      autoScroll()
+    }, 2000) // Wait 2 seconds before starting
+
+    return () => {
+      clearTimeout(startDelay)
+      clearInterval(scrollInterval)
+    }
+  }, [data])
+
   // Filter out employees without an employee ID and ignored users
-  const filteredData = data?.data?.filter((emp) => {
-    if (!emp.employeeId || emp.employeeId.trim() === '') return false
+  const filteredData = useMemo(() => {
+    if (!data?.data) return []
     
-    const isIgnored = IGNORED_USERS.some((ignored) => 
-      ignored.toLowerCase() === emp.employeeId?.toLowerCase() ||
-      ignored.toLowerCase() === emp.displayName?.toLowerCase()
-    )
-    
-    return !isIgnored
-  }) || []
+    return data.data.filter((emp) => {
+      if (!emp.employeeId || emp.employeeId.trim() === '') return false
+      
+      const isIgnored = IGNORED_USERS.some((ignored) => 
+        ignored.toLowerCase() === emp.employeeId?.toLowerCase() ||
+        ignored.toLowerCase() === emp.displayName?.toLowerCase()
+      )
+      
+      return !isIgnored
+    })
+  }, [data?.data])
 
-  // Sort by total activities descending
-  const sortedData = [...filteredData].sort((a, b) => b.totalActivities - a.totalActivities)
+  // Compute summary based on filtered data
+  const computedSummary = useMemo(() => {
+    if (!filteredData.length) {
+      return {
+        pmsOnly: 0,
+        crmOnly: 0,
+        both: 0,
+        totalPmsActivities: 0,
+        totalCrmActivities: 0,
+        totalActivities: 0,
+        totalTaskCount: 0,
+        zeroActivities: 0,
+        zeroActivityEmployees: [],
+      }
+    }
 
-  // Get employees with 0 activities
-  const zeroActivityEmployees = filteredData.filter((u) => u.totalActivities === 0)
+    const zeroActivityEmployees = filteredData.filter((u) => u.totalActivities === 0)
 
-  // Compute summary
-  const summary = {
-    pmsOnly: filteredData.filter((u) => u.pms.total > 0 && u.crm.total === 0).length,
-    crmOnly: filteredData.filter((u) => u.crm.total > 0 && u.pms.total === 0).length,
-    both: filteredData.filter((u) => u.pms.total > 0 && u.crm.total > 0).length,
-    totalPmsActivities: filteredData.reduce((sum, u) => sum + u.pms.total, 0),
-    totalCrmActivities: filteredData.reduce((sum, u) => sum + u.crm.total, 0),
-    totalActivities: filteredData.reduce((sum, u) => sum + u.totalActivities, 0),
-    totalTaskCount: filteredData.reduce((sum, u) => sum + (u.pms.totalTaskCount || 0), 0),
-    zeroActivities: filteredData.filter((u) => u.totalActivities === 0).length,
-  }
+    return {
+      pmsOnly: filteredData.filter((u) => u.pms.total > 0 && u.crm.total === 0).length,
+      crmOnly: filteredData.filter((u) => u.crm.total > 0 && u.pms.total === 0).length,
+      both: filteredData.filter((u) => u.pms.total > 0 && u.crm.total > 0).length,
+      totalPmsActivities: filteredData.reduce((sum, u) => sum + u.pms.total, 0),
+      totalCrmActivities: filteredData.reduce((sum, u) => sum + u.crm.total, 0),
+      totalActivities: filteredData.reduce((sum, u) => sum + u.totalActivities, 0),
+      totalTaskCount: filteredData.reduce((sum, u) => sum + (u.pms.totalTaskCount || 0), 0),
+      zeroActivities: zeroActivityEmployees.length,
+      zeroActivityEmployees: zeroActivityEmployees,
+    }
+  }, [filteredData])
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto"></div>
-          <p className="text-xl text-muted-foreground">Loading dashboard...</p>
+      <div className="container mx-auto py-6 space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Member Analytics</h1>
+          <p className="text-muted-foreground mt-1">
+            Combined PMS and CRM activity analytics for all team members (Yesterday)
+          </p>
         </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-64 w-full" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto py-8 space-y-8">
+    <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
-      <div className="text-center">
-        <h1 className="text-5xl font-bold tracking-tight mb-2">
-          Member Analytics Dashboard
-        </h1>
-        <p className="text-2xl text-muted-foreground">
-          {yesterday}
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Member Analytics</h1>
+        <p className="text-muted-foreground mt-1">
+          Combined PMS and CRM activity analytics for all team members · {format(subDays(new Date(), 1), 'MMMM d, yyyy')}
         </p>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        <Card className="border-2">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-medium text-muted-foreground">
-              Employees with 0 Activities
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-3">
-              <Users className="h-8 w-8 text-gray-500 dark:text-gray-400" />
-              <span className="text-5xl font-bold">{summary.zeroActivities}</span>
-            </div>
-            <div className="flex gap-2 mt-4 text-sm">
-              <Badge variant="outline" className="text-sm px-3 py-1">
-                PMS: {summary.pmsOnly}
-              </Badge>
-              <Badge variant="outline" className="text-sm px-3 py-1">
-                CRM: {summary.crmOnly}
-              </Badge>
-              <Badge variant="outline" className="text-sm px-3 py-1">
-                Both: {summary.both}
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-2">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-medium text-muted-foreground">
-              Total Activities
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-3">
-              <TrendingUp className="h-8 w-8 text-green-500 dark:text-green-400" />
-              <span className="text-5xl font-bold">{summary.totalActivities}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-2">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-medium text-muted-foreground">
-              PMS Activities
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-5xl font-bold text-blue-600 dark:text-blue-400">
-              {summary.totalPmsActivities}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-2">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-medium text-muted-foreground">
-              CRM Activities
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-5xl font-bold text-purple-600 dark:text-purple-400">
-              {summary.totalCrmActivities}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-2 border-blue-200 dark:border-blue-800">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-medium text-muted-foreground">
-              Total Task Count
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-5xl font-bold text-blue-600 dark:text-blue-400">
-              {summary.totalTaskCount}
-            </div>
-            <div className="text-xs text-muted-foreground mt-2">
-              Work units completed
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Employees with 0 Activities Table */}
-      {zeroActivityEmployees.length > 0 && (
-        <Card className="border-2 border-red-200 dark:border-red-800">
-          <CardHeader>
-            <CardTitle className="text-2xl text-red-600 dark:text-red-400">Employees with 0 Activities</CardTitle>
-            <p className="text-lg text-muted-foreground">
-              {zeroActivityEmployees.length} employee{zeroActivityEmployees.length !== 1 ? 's' : ''} with no activity yesterday
-            </p>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-md border border-red-200 dark:border-red-800">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-lg font-semibold">Name</TableHead>
-                    <TableHead className="text-right text-lg font-semibold">PMS</TableHead>
-                    <TableHead className="text-right text-lg font-semibold">CRM</TableHead>
-                    <TableHead className="text-right text-lg font-semibold">Total</TableHead>
-                    <TableHead className="text-right text-lg font-semibold">Task Count</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {zeroActivityEmployees.map((employee) => (
-                    <TableRow key={employee.employeeId} className="text-base bg-red-50 dark:bg-red-950/20">
-                      <TableCell className="font-medium">
-                        {employee.displayName}
-                      </TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {employee.pms.total}
-                      </TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {employee.crm.total}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span className="font-bold text-red-500 dark:text-red-400">
-                          {employee.totalActivities}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {employee.pms.totalTaskCount || 0}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Error State */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Failed to load analytics data. Please try again later.
+          </AlertDescription>
+        </Alert>
       )}
 
-      {/* Employee Activity Table */}
-      <Card className="border-2">
-        <CardHeader>
-          <CardTitle className="text-2xl">Employee Activity Details</CardTitle>
-          <p className="text-lg text-muted-foreground">
-            Showing {sortedData.length} employees
-          </p>
-        </CardHeader>
-        <CardContent>
-          {sortedData.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground text-xl">
-              No data available for yesterday
-            </div>
-          ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-lg font-semibold">Name</TableHead>
-                    <TableHead className="text-right text-lg font-semibold">PMS</TableHead>
-                    <TableHead className="text-right text-lg font-semibold">CRM</TableHead>
-                    <TableHead className="text-right text-lg font-semibold">Total</TableHead>
-                    <TableHead className="text-right text-lg font-semibold">Task Count</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sortedData.map((employee) => (
-                    <TableRow key={employee.employeeId} className="text-base">
-                      <TableCell className="font-medium">
-                        {employee.displayName}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span className={employee.pms.total > 0 ? 'text-blue-600 dark:text-blue-400 font-semibold' : 'text-muted-foreground'}>
-                          {employee.pms.total}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span className={employee.crm.total > 0 ? 'text-purple-600 dark:text-purple-400 font-semibold' : 'text-muted-foreground'}>
-                          {employee.crm.total}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span className={`font-bold ${
-                          employee.totalActivities === 0 
-                            ? 'text-red-500 dark:text-red-400' 
-                            : 'text-green-600 dark:text-green-400'
-                        }`}>
-                          {employee.totalActivities}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span className={employee.pms.totalTaskCount > 0 ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-muted-foreground'}>
-                          {employee.pms.totalTaskCount || 0}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Success State */}
+      {data && !error && (
+        <>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Employees with 0 Activities
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-5 w-5 text-gray-500" />
+                    <span className="text-3xl font-bold">{computedSummary.zeroActivities}</span>
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-3 text-xs text-muted-foreground">
+                  <Badge variant="outline" className="text-xs">
+                    PMS: {computedSummary.pmsOnly}
+                  </Badge>
+                  <Badge variant="outline" className="text-xs">
+                    CRM: {computedSummary.crmOnly}
+                  </Badge>
+                  <Badge variant="outline" className="text-xs">
+                    Both: {computedSummary.both}
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
 
-      {/* Footer note */}
-      <div className="text-center text-sm text-muted-foreground mt-8">
-        Data automatically refreshes every 5 minutes • Last updated: {lastUpdated.toLocaleTimeString()}
-      </div>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Total Activities
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-green-500" />
+                  <span className="text-3xl font-bold">{computedSummary.totalActivities}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  PMS Activities
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-blue-600">
+                  {computedSummary.totalPmsActivities}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  CRM Activities
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-purple-600">
+                  {computedSummary.totalCrmActivities}
+                </div>
+              </CardContent>
+            </Card>
+
+          </div>
+
+          {/* Employees with 0 Activities Table */}
+          {computedSummary.zeroActivityEmployees.length > 0 && (
+            <Card className="border-red-200 dark:border-red-800">
+              <CardHeader>
+                <CardTitle className="text-red-600 dark:text-red-400">
+                  Employees with 0 Activities
+                </CardTitle>
+                <CardDescription>
+                  {computedSummary.zeroActivityEmployees.length} employee{computedSummary.zeroActivityEmployees.length !== 1 ? 's' : ''} with no activity yesterday
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ReadOnlyAnalyticsTable data={computedSummary.zeroActivityEmployees} />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Analytics Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Employee Activity Details</CardTitle>
+              <CardDescription>
+                Showing {filteredData.length} employees{' '}
+                {data.data && `of ${data.data.length} total`}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ReadOnlyAnalyticsTable data={filteredData} />
+            </CardContent>
+          </Card>
+
+          {/* Footer note */}
+          <div className="text-center text-sm text-muted-foreground">
+            Data automatically refreshes every 5 minutes · Last updated: {lastUpdated.toLocaleTimeString()}
+          </div>
+        </>
+      )}
     </div>
   )
 }
