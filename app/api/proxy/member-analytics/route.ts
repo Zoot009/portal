@@ -148,31 +148,66 @@ export async function GET(request: NextRequest) {
       crmParams.set('endDate', endDate)
     }
 
-    // Fetch from both APIs in parallel
-    const [pmsData, crmData] = await Promise.allSettled([
-      fetchWithFallback(PMS_URLS, pmsParams),
+    // Fetch from all PMS URLs to merge data from multiple sources
+    const pmsResults = await Promise.allSettled(
+      PMS_URLS.map(url => 
+        fetch(`${url}?${pmsParams.toString()}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          cache: 'no-store',
+        }).then(res => res.ok ? res.json() : null)
+      )
+    )
+
+    // Fetch from CRM with fallback
+    const crmData = await Promise.allSettled([
       fetchWithFallback(CRM_URLS, crmParams),
     ])
 
-    // Process PMS data
+    // Process and merge PMS data from all sources
     const pmsUsers = new Map<string, PMSUser>()
-    if (pmsData.status === 'fulfilled' && pmsData.value?.success && Array.isArray(pmsData.value.data)) {
-      pmsData.value.data.forEach((user: PMSUser) => {
-        if (user.user?.employeeId) {
-          pmsUsers.set(user.user.employeeId, user)
-        }
-      })
-    }
+    pmsResults.forEach((result, index) => {
+      if (result.status === 'fulfilled' && result.value?.success && Array.isArray(result.value.data)) {
+        console.log(`Processing PMS data from ${PMS_URLS[index]}: ${result.value.data.length} users`)
+        result.value.data.forEach((user: PMSUser) => {
+          if (user.user?.employeeId) {
+            const existingUser = pmsUsers.get(user.user.employeeId)
+            if (existingUser) {
+              // Merge activities by summing counts
+              existingUser.counts.totalActivities += user.counts.totalActivities || 0
+              existingUser.counts.ordersCreated = (existingUser.counts.ordersCreated || 0) + (user.counts.ordersCreated || 0)
+              existingUser.counts.tasksCreated = (existingUser.counts.tasksCreated || 0) + (user.counts.tasksCreated || 0)
+              existingUser.counts.tasksCompleted = (existingUser.counts.tasksCompleted || 0) + (user.counts.tasksCompleted || 0)
+              existingUser.counts.folderLinksAdded = (existingUser.counts.folderLinksAdded || 0) + (user.counts.folderLinksAdded || 0)
+              existingUser.counts.ordersDelivered = (existingUser.counts.ordersDelivered || 0) + (user.counts.ordersDelivered || 0)
+              existingUser.counts.askingTasksCreated = (existingUser.counts.askingTasksCreated || 0) + (user.counts.askingTasksCreated || 0)
+              existingUser.counts.askingTasksCompleted = (existingUser.counts.askingTasksCompleted || 0) + (user.counts.askingTasksCompleted || 0)
+              existingUser.counts.totalTaskCount = (existingUser.counts.totalTaskCount || 0) + (user.counts.totalTaskCount || 0)
+            } else {
+              pmsUsers.set(user.user.employeeId, user)
+            }
+          }
+        })
+      } else {
+        console.log(`Failed to fetch PMS data from ${PMS_URLS[index]}`)
+      }
+    })
 
     // Process CRM data
     const crmUsers = new Map<string, CRMUser>()
-    if (crmData.status === 'fulfilled' && Array.isArray(crmData.value?.users)) {
-      crmData.value.users.forEach((user: CRMUser) => {
+    if (crmData[0]?.status === 'fulfilled' && Array.isArray(crmData[0].value?.users)) {
+      console.log(`Processing CRM data: ${crmData[0].value.users.length} users`)
+      crmData[0].value.users.forEach((user: CRMUser) => {
         if (user.employeeId) {
           crmUsers.set(user.employeeId, user)
         }
       })
+    } else {
+      console.log('Failed to fetch CRM data')
     }
+
+    console.log(`Total unique PMS users after merging: ${pmsUsers.size}`)
+    console.log(`Total CRM users: ${crmUsers.size}`)
 
     // Combine data
     const employeeIds = new Set([...pmsUsers.keys(), ...crmUsers.keys()])
@@ -223,6 +258,8 @@ export async function GET(request: NextRequest) {
     // Sort by total activities descending
     combinedData.sort((a, b) => b.totalActivities - a.totalActivities)
 
+    console.log(`Total combined employees: ${combinedData.length}`)
+
     // Calculate summary
     const summary = {
       totalEmployees: combinedData.length,
@@ -234,13 +271,18 @@ export async function GET(request: NextRequest) {
       totalActivities: combinedData.reduce((sum, u) => sum + u.totalActivities, 0),
     }
 
+    // Check if at least one PMS source succeeded
+    const pmsSuccess = pmsResults.some(r => r.status === 'fulfilled' && r.value?.success)
+    const crmSuccess = crmData[0]?.status === 'fulfilled'
+
     return NextResponse.json({
       success: true,
       summary,
       data: combinedData,
       sources: {
-        pms: pmsData.status === 'fulfilled' ? 'success' : 'failed',
-        crm: crmData.status === 'fulfilled' ? 'success' : 'failed',
+        pms: pmsSuccess ? 'success' : 'failed',
+        crm: crmSuccess ? 'success' : 'failed',
+        pmsSourcesCount: pmsResults.filter(r => r.status === 'fulfilled' && r.value?.success).length,
       },
       filters: {
         startDate: startDate || null,

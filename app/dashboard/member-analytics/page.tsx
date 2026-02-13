@@ -28,6 +28,8 @@ const IGNORED_USERS: string[] = [
   "c1106dd0-1baf-4a82-8f7a-35e7041206b4",
   "79dd88df-e0d9-474b-afd8-c96820f5aaac",
   "c522f383-d7e5-4a7c-96fb-65cb23a61c2b",
+  "19b3243e-0c23-4113-a282-7e6219238f28",
+  "8a390dd0-d79b-47bc-b8fd-6041483c9e7e",
   "zoot1071",
   "zoot1093",
   "zoot1086",

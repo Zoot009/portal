@@ -67,6 +67,8 @@ interface BreakSession {
   }
 }
 
+const ENABLE_EXPORT_DATA_BUTTON = false
+
 export default function AdminBreaksPage() {
   const [searchTerm, setSearchTerm] = useState('')
 
@@ -484,7 +486,7 @@ export default function AdminBreaksPage() {
             <Coffee className="mr-2 h-4 w-4" />
             Add Manual Break
           </Button>
-          <Button onClick={handleExportClick}>
+          <Button onClick={handleExportClick} disabled={!ENABLE_EXPORT_DATA_BUTTON}>
             <Download className="mr-2 h-4 w-4" />
             Export Data
           </Button>
